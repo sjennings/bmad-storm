@@ -1,0 +1,12 @@
+# storm override — dev agent (Amelia). Sparse: deltas only.
+# Written by storm-setup; edit the template in the module repo, then re-run storm-setup.
+
+[agent]
+
+# Travels into every workflow the dev agent dispatches (dev-story, create-story,
+# code-review, quick-dev, qa-generate).
+persistent_facts = [
+  "file:{project-root}/_bmad/storm/storm-linear/reference/issue-tracker.md",
+  "Tracker operations (publish/open/close/slice/mirror/intake against Linear) run through the storm-linear skill under its phase-split authority contract — never improvised MCP calls.",
+  "Code and tests outrank design prose. Design documents describe intent and may include unbuilt mechanics; confirm current behavior in code/tests before implementing from prose.",
+]

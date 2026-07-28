@@ -1,0 +1,30 @@
+{
+  "name": "bmad-storm",
+  "owner": {
+    "name": "sjennings"
+  },
+  "license": "MIT",
+  "homepage": "",
+  "repository": "https://github.com/sjennings/bmad-storm",
+  "keywords": ["bmad", "storm", "linear", "grilling", "cross-model-review"],
+  "plugins": [
+    {
+      "name": "storm",
+      "source": "./skills",
+      "description": "August Storm harness module for BMAD: Linear as phase-split source of truth, grilling interviews at story authoring and implementation entry, cross-model spec and code review panels, three-way tracker drift reconciliation, and the bounded harness-improvement loop.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Scott Jennings"
+      },
+      "skills": [
+        "./skills/storm-setup",
+        "./skills/storm-grilling",
+        "./skills/storm-linear",
+        "./skills/storm-spec-review",
+        "./skills/storm-cross-review",
+        "./skills/storm-reconcile",
+        "./skills/storm-harness-improvement"
+      ]
+    }
+  ]
+}

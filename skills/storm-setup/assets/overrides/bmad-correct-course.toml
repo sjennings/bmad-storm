@@ -1,0 +1,23 @@
+# storm override — correct course. Sparse: deltas only.
+# Written by storm-setup; edit the template in the module repo, then re-run storm-setup.
+
+[workflow]
+
+persistent_facts = [
+  "file:{project-root}/_bmad/storm/storm-linear/reference/issue-tracker.md",
+]
+
+# Fires after the change proposal is finalized and epics/sprint files updated.
+on_complete = """
+Mirror the scope change to Linear:
+
+1. Invoke `storm-linear mirror` with a summary of what this correct-course run
+   changed: new stories, rescoped stories, canceled stories.
+2. For each affected story, ensure the Linear side matches the contract: new or
+   rescoped stories get their issue created or updated in the epic's project
+   with state per phase; canceled stories get their issue moved to Canceled with
+   a comment linking this change proposal. If an intake (needs-triage) issue
+   spawned this change, close it as a duplicate of the published story.
+3. Report every Linear mutation made. On any write failure, report it, print
+   what should have been written, and hand off to the operator.
+"""

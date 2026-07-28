@@ -1,0 +1,9 @@
+# storm override — PM agent (John). Sparse: deltas only.
+# Written by storm-setup; edit the template in the module repo, then re-run storm-setup.
+
+[agent]
+
+persistent_facts = [
+  "file:{project-root}/_bmad/storm/storm-linear/reference/issue-tracker.md",
+  "Epic and story scope is created and rescoped only through BMAD planning workflows; Linear stores the result. Never create epics or stories directly in Linear — mirroring runs through the storm-linear skill.",
+]

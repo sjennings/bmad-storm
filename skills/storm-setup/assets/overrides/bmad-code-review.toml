@@ -1,0 +1,26 @@
+# storm override — code review. Sparse: deltas only.
+# Written by storm-setup; edit the template in the module repo, then re-run storm-setup.
+#
+# Wiring note: cross-model review hooks on_complete (baseline surface, stable
+# across versions) rather than review_layers — the v7 development branch removes
+# the review_layers surface while preserving on_complete. Do not move this
+# wiring onto review_layers even though v6.10 would allow it.
+
+[workflow]
+
+# Fires after the native subagent layers have presented and triaged.
+on_complete = """
+Extend the review across model families:
+
+1. Invoke the storm-cross-review skill on the same diff, passing the native
+   pass's triaged findings for dedup.
+2. Merge the external findings into the same triage format and present the
+   combined list. Every actionable finding is fixed or explicitly rebutted with
+   a reason.
+3. After fixes, re-run build and the full test suite, then loop with complete
+   fresh passes per the panel protocol, up to review_loop_max_rounds from
+   {project-root}/_bmad/storm/config.yaml.
+4. Exit clean, or halt and report non-convergence to the operator. Skipped
+   external reviewers (missing/unauthenticated CLIs) are reported prominently,
+   never silently.
+"""

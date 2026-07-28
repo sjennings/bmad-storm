@@ -1,0 +1,30 @@
+# storm override — story authoring. Sparse: deltas only.
+# Written by storm-setup; edit the template in the module repo, then re-run storm-setup.
+
+[workflow]
+
+# After the workflow loads the story's epic scope and context, and before the
+# story file is drafted: interview to shared understanding.
+activation_steps_append = [
+  "Invoke the storm-grilling skill in `full` mode against the resolved story: restate the epics.md scope in glossary vocabulary, then interview the operator one question at a time to shared understanding. Do not draft the story until the operator confirms. If the story proves too big or foggy for one session, stop and recommend bmad-correct-course instead of pressing on.",
+]
+
+# Fires at the workflow's terminal step (story saved, sprint status updated).
+# This is the single handoff point between BMAD authority and Linear authority.
+on_complete = """
+Complete the storm publication sequence:
+
+1. Offer the operator a spec review: "Run storm-spec-review before publishing?"
+   If yes, invoke the storm-spec-review skill on the finished story spec and fold
+   accepted findings into the spec before proceeding. If no, note the skip.
+2. Invoke `storm-linear publish <story-key>`: publish the spec to the story's
+   Linear issue per the tracker contract (create or update in place, story-key
+   anchor line first, state Todo, labels ready-for-agent + type:*), then set the
+   story's sprint-status.yaml entry to ready-for-dev.
+3. Report to the operator: the issue identifier and URL, whether spec review ran
+   and its outcome, and that the story is now ready-for-dev.
+
+If the Linear write fails: report the failure, print the full spec that should
+have been published, leave sprint-status.yaml untouched, and hand off to the
+operator. Never silently drop the publication.
+"""

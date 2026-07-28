@@ -1,0 +1,31 @@
+# storm override — story implementation. Sparse: deltas only.
+# Written by storm-setup; edit the template in the module repo, then re-run storm-setup.
+
+[workflow]
+
+# Runs after greet, before the dev-story execution contract engages.
+activation_steps_append = [
+  "Invoke `storm-linear open` for this story: resolve the story's Linear issue (or the child ticket being worked) and move it to In Progress. This session now owns closing it out — a session that opens an issue never leaves that to the operator. When the issue is a child ticket, touch the ticket's state only, never the parent story issue.",
+  "Read grill_on_implement from {project-root}/_bmad/storm/config.yaml and invoke the storm-grilling skill in that mode against the story spec (skip entirely when `off`). In gaps-only mode: probe only what the published spec leaves ambiguous, then get one confirmation of shared understanding. Do not begin implementation until confirmed.",
+]
+
+# Fires after the story implementation is complete and status is updated.
+on_complete = """
+Close out per the storm contract — only after a clean exit (review loop clean
+including storm-cross-review, build and full test suite green, work committed):
+
+1. Invoke `storm-linear close`: comment the completion record on the issue
+   BEFORE changing state — what shipped, the verification actually run with its
+   results, every review finding declined with its reason, anything deferred to
+   a named follow-up ticket. Then move the issue to Done.
+2. If this was an unsliced story issue, reconcile sprint-status.yaml to `done`
+   under the story key. If it was a child ticket, reconcile nothing — and if it
+   was the last open child, report that the story is ready to close rather than
+   closing the parent yourself.
+3. Report: the issue's new state, what you closed versus deliberately left open,
+   and any follow-up the work surfaced.
+
+If the exit was NOT clean (review non-converged, tests failing, or a finding
+awaiting an operator decision), the issue stays In Progress — say so explicitly
+and report the outstanding items instead of closing.
+"""

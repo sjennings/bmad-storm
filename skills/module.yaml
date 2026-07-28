@@ -1,0 +1,61 @@
+code: storm
+name: "August Storm Harness"
+description: "Project harness for August Storm on BMAD: Linear phase-split source of truth, grilling interviews, cross-model spec/code review panels, tracker drift reconciliation, harness improvement loop. Requires the BMad Method (bmm) module."
+module_version: 0.1.0
+default_selected: false
+
+module_greeting: >
+  August Storm Harness (storm) installed. To finish setup, run the
+  storm-setup skill from your agent:
+
+    > use the storm-setup skill
+
+  It writes the sparse customization overrides into _bmad/custom/ that wire
+  storm into the stock BMM workflows (create-story, dev-story, code-review,
+  correct-course), then verifies each override resolves cleanly. The module
+  requires the BMad Method (bmm) module: _bmad/bmm/config.yaml and a
+  sprint-status.yaml from bmad-sprint-planning. Re-run storm-setup after any
+  BMAD update (`storm-setup check`) to confirm the wiring still lands.
+
+# --- Install prompts -------------------------------------------------------
+
+linear_team:
+  prompt: "Linear team name that stores this project's epics, stories, and tickets."
+  scope: team
+  default: "August Storm"
+  result: "{value}"
+
+linear_team_key:
+  prompt: "Linear team key (issue prefix, e.g. AS)."
+  scope: team
+  default: "AS"
+  result: "{value}"
+
+grill_on_implement:
+  prompt:
+    - "How thorough should the pre-flight grilling interview be when implementation (bmad-dev-story) starts?"
+    - "'gaps-only' probes only what the published spec leaves ambiguous; 'full' re-interviews scope end to end."
+  scope: user
+  default: "gaps-only"
+  result: "{value}"
+  single-select:
+    - value: "full"
+      label: "Full - complete grilling interview before any implementation"
+    - value: "gaps-only"
+      label: "Gaps only - probe ambiguities the spec does not settle, then confirm"
+    - value: "off"
+      label: "Off - trust the published spec, start implementing"
+
+external_reviewers:
+  prompt:
+    - "Comma-separated external reviewer CLIs for cross-model review panels."
+    - "Each must be installed and authenticated; unavailable reviewers are skipped with a warning, never a hard failure."
+  scope: user
+  default: "codex"
+  result: "{value}"
+
+review_loop_max_rounds:
+  prompt: "Maximum cross-model review rounds before halting and reporting non-convergence to the operator."
+  scope: team
+  default: "3"
+  result: "{value}"
