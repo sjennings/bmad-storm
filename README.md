@@ -13,7 +13,7 @@ Design doctrine: *module for behavior, baseline overrides for wiring.* No instal
 | `storm-setup` | Writes and verifies the sparse `_bmad/custom/` overrides; `check` mode audits wiring after upstream updates |
 | `storm-grilling` | One-question-at-a-time interview to shared understanding, with glossary/ADR capture (ported from [mattpocock/skills](https://github.com/mattpocock/skills), MIT) |
 | `storm-linear` | Tracker operations (publish/open/close/slice/mirror/intake) under the phase-split authority contract in `reference/issue-tracker.md` |
-| `storm-spec-review` | Adversarial spec review panel: BMAD lenses + external-model reviewers, before publication |
+| `storm-spec-review` | Adversarial spec review panel: BMAD lenses + host-selected Polytoken subagents or external CLI reviewers, before publication |
 | `storm-cross-review` | Cross-model code review panel after `bmad-code-review`'s native pass; shared `reference/panel-protocol.md` |
 | `storm-reconcile` | Three-way drift audit: `epics.md` ↔ Linear ↔ `sprint-status.yaml`, phase-decides rule applied |
 | `storm-harness-improvement` | Bounded improvement loop; promotes trajectory lessons into their narrowest authoritative home |
@@ -33,9 +33,14 @@ Then finish wiring from your agent:
 > use the storm-setup skill
 ```
 
-Install prompts (stored in `_bmad/storm/config.yaml`): `linear_team`, `linear_team_key`, `grill_on_implement` (`full` | `gaps-only` | `off`), `external_reviewers` (comma-separated CLIs, e.g. `codex,gemini`), `review_loop_max_rounds`.
+Install prompts are stored in `_bmad/storm/config.yaml`: `linear_team`, `linear_team_key`, `grill_on_implement` (`full` | `gaps-only` | `off`), the two host-specific review rosters below, and `review_loop_max_rounds`.
 
-After any BMAD update: `> use the storm-setup skill with argument check`.
+- `external_reviewers`: comma-separated reviewer CLI command names for hosts outside Polytoken (for example, `codex,gemini`); the backward-compatible default is `codex`.
+- `polytoken_review_models`: comma-separated fully qualified model references used only under Polytoken; empty by default. Each entry may be a bare model ID such as `codex/gpt-5`, or append Polytoken's optional `<model-id>(<effort-level>)` suffix, such as `codex/gpt-5(high)`. These are examples, not guaranteed installed models or supported effort levels. Effort levels are model-specific; omitting the suffix uses the model's configured default effort.
+
+Polytoken sessions use native subagents and never invoke or fall back to `external_reviewers`. Empty, unavailable, or failed Polytoken model rosters are reported prominently. Detailed backend detection, execution, artifacts, and failure behavior are authoritative in `skills/storm-cross-review/reference/panel-protocol.md`.
+
+Existing installations must rerun the BMAD module installer/update flow to materialize `polytoken_review_models`, then run `> use the storm-setup skill with argument check` to verify wiring. Run the same setup check after any BMAD update.
 
 ## How the wiring lands
 
@@ -49,7 +54,7 @@ After any BMAD update: `> use the storm-setup skill with argument check`.
 
 ## Requirements
 
-BMAD v6.10+ with the BMM module; the `linear-server` MCP tools; `uv` (or Python 3.11+) for the customization resolver; optionally, authenticated external reviewer CLIs for cross-model panels (missing reviewers are skipped with a warning).
+BMAD v6.10+ with the BMM module; the `linear-server` MCP tools; `uv` (or Python 3.11+) for the customization resolver; and, for Tier 2 cross-model panels, either Polytoken with operator-configured and available fully qualified model IDs or authenticated external reviewer CLIs on non-Polytoken hosts. Missing or failed reviewers are reported and skipped without failing the review step.
 
 ## License
 

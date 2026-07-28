@@ -1,6 +1,6 @@
 ---
 name: storm-spec-review
-description: Adversarial cross-model spec review panel. Run on a finished story spec BEFORE it is published to Linear - BMAD review lenses via context-free subagents plus external-model reviewers over a self-contained packet, merged into one triage.
+description: Adversarial cross-model spec review panel. Run on a finished story spec BEFORE it is published to Linear - BMAD review lenses plus backend-selected Polytoken subagents or external CLI reviewers over a self-contained packet, merged into one triage.
 ---
 
 # Storm Spec Review
@@ -26,7 +26,7 @@ Assemble per protocol §1, containing:
 - **Scope-boundary auditor** — the spec must fit its story: flag anything that contradicts epic constraints, silently absorbs another story's scope, leaves a stated AC unaddressed, or depends on unbuilt mechanics without saying so.
 - **Glossary auditor** — flag terms used contrary to the glossary, and new terms the spec introduces without defining.
 
-**Tier 2 (external models):** the configured `external_reviewers` roster, each with the full packet and instructed: *"You are reviewing a specification, not code. Find defects in the spec itself: ambiguity an implementor could resolve two ways, contradictions, missing failure/edge behavior, untestable claims, hidden scope. Output findings only, in the stated format."*
+**Tier 2 (cross-model backend):** select the host-specific roster and execute it exactly per the authoritative shared protocol §3. Give each selected reviewer the full packet and this instruction: *"You are reviewing a specification, not code. Find defects in the spec itself: ambiguity an implementor could resolve two ways, contradictions, missing failure/edge behavior, untestable claims, hidden scope. Output findings only, in the stated format."* Backend selection does not alter findings, merge, triage, or loop semantics.
 
 ## After triage
 

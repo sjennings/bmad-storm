@@ -29,7 +29,7 @@ For each template in this skill's `assets/overrides/` directory (`bmad-agent-dev
 
 4. Never write into `_bmad/core/`, `_bmad/bmm/`, or any installed skill folder. Overrides go in `_bmad/custom/` only.
 
-Finish with a summary: overrides written, merged, skipped (and why), and verification results. Then remind the operator of the two knobs most worth confirming: `grill_on_implement` and `external_reviewers` in `_bmad/storm/config.yaml`.
+Finish with a summary: overrides written, merged, skipped (and why), and verification results. Then remind the operator to confirm `grill_on_implement` and both cross-model rosters in `_bmad/storm/config.yaml`: `polytoken_review_models` supplies fully qualified model references only when running under Polytoken, while `external_reviewers` supplies CLI command names only outside Polytoken. Polytoken does not fall back to the CLI roster.
 
 ## Check mode (`storm-setup check`)
 

@@ -14,13 +14,14 @@ Extend the review across model families:
 
 1. Invoke the storm-cross-review skill on the same diff, passing the native
    pass's triaged findings for dedup.
-2. Merge the external findings into the same triage format and present the
-   combined list. Every actionable finding is fixed or explicitly rebutted with
-   a reason.
+2. Merge the cross-model findings from the host-selected backend into the same
+   triage format and present the combined list. Every actionable finding is
+   fixed or explicitly rebutted with a reason.
 3. After fixes, re-run build and the full test suite, then loop with complete
    fresh passes per the panel protocol, up to review_loop_max_rounds from
    {project-root}/_bmad/storm/config.yaml.
 4. Exit clean, or halt and report non-convergence to the operator. Skipped
-   external reviewers (missing/unauthenticated CLIs) are reported prominently,
-   never silently.
+   cross-model reviewers (missing/unauthenticated CLIs outside Polytoken, or
+   failed/unavailable configured models under Polytoken) are reported
+   prominently, never silently. Polytoken never falls back to reviewer CLIs.
 """

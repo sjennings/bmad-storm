@@ -1,7 +1,7 @@
 code: storm
 name: "August Storm Harness"
 description: "Project harness for August Storm on BMAD: Linear phase-split source of truth, grilling interviews, cross-model spec/code review panels, tracker drift reconciliation, harness improvement loop. Requires the BMad Method (bmm) module."
-module_version: 0.1.0
+module_version: 0.2.0
 default_selected: false
 
 module_greeting: >
@@ -48,10 +48,19 @@ grill_on_implement:
 
 external_reviewers:
   prompt:
-    - "Comma-separated external reviewer CLIs for cross-model review panels."
-    - "Each must be installed and authenticated; unavailable reviewers are skipped with a warning, never a hard failure."
+    - "Comma-separated external reviewer CLIs for cross-model review panels outside Polytoken."
+    - "Each must be installed and authenticated; unavailable reviewers are skipped with a warning, never a hard failure. Polytoken sessions use polytoken_review_models instead."
   scope: user
   default: "codex"
+  result: "{value}"
+
+polytoken_review_models:
+  prompt:
+    - "Comma-separated Polytoken model references accepted by subagent.model_override; used only when the review runs under Polytoken."
+    - "Use a fully qualified model ID such as codex/gpt-5, optionally with Polytoken's <model-id>(<effort-level>) suffix, such as codex/gpt-5(high)."
+    - "Effort names are model-specific and must be configured/supported for that model; omitting the suffix uses the model's configured default effort. Outside Polytoken, external_reviewers remains the CLI roster."
+  scope: user
+  default: ""
   result: "{value}"
 
 review_loop_max_rounds:
