@@ -3,10 +3,15 @@
 
 [workflow]
 
+persistent_facts = [
+  "Implement test-first at the story's pre-agreed seams per the storm-tdd skill: load the spec's 'Seams & test points' list before writing any test; red before green, one vertical slice at a time; no test at an unconfirmed seam — if a needed seam isn't on the list, confirm it with the operator before testing.",
+]
+
 # Runs after greet, before the dev-story execution contract engages.
 activation_steps_append = [
-  "Invoke `storm-linear open` for this story: resolve the story's Linear issue (or the child ticket being worked) and move it to In Progress. This session now owns closing it out — a session that opens an issue never leaves that to the operator. When the issue is a child ticket, touch the ticket's state only, never the parent story issue.",
+  "Choose the host-specific entry path. Under Polytoken, do all initial story inspection and implementation planning in the shipped `plan` facet: if this workflow was started in another facet and the native `switch_facet` tool is exposed, switch to `plan` before opening the Linear issue. Resolve and read the story issue (or child ticket), published spec, story file, and project context while its state remains Todo; do not call `storm-linear open` yet. Outside Polytoken, preserve the existing sequence: invoke `storm-linear open` now, moving only the issue or child ticket being worked to In Progress; this session owns closing what it opens and never changes a child ticket's parent story issue.",
   "Read grill_on_implement from {project-root}/_bmad/storm/config.yaml and invoke the storm-grilling skill in that mode against the story spec (skip entirely when `off`). In gaps-only mode: probe only what the published spec leaves ambiguous, then get one confirmation of shared understanding. Do not begin implementation until confirmed.",
+  "Under Polytoken only, after the pre-flight grill is confirmed, finish the implementation plan in the `plan` facet, record it with `write_plan`, run the required plan review discipline, and call `handoff_plan` for operator approval. This is the only supported plan-to-execute transition: do not call `propose_goal` or attempt a direct facet switch from `plan`. The approved handoff activates the saved-session goal and enters `execute`; once execution resumes, call `read_goal` and verify that the implementation goal is active, then invoke `storm-linear open` before making implementation changes. If no active goal exists, halt before opening the issue and report that Polytoken plan integration must be enabled; if handoff is not approved, leave the issue Todo and do not implement. Outside Polytoken, do not perform this facet/goal branch.",
 ]
 
 # Fires after the story implementation is complete and status is updated.

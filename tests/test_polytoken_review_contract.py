@@ -12,6 +12,8 @@ CROSS_SKILL = (ROOT / "skills/storm-cross-review/SKILL.md").read_text()
 SPEC_SKILL = (ROOT / "skills/storm-spec-review/SKILL.md").read_text()
 SETUP_SKILL = (ROOT / "skills/storm-setup/SKILL.md").read_text()
 HOOK = (ROOT / "skills/storm-setup/assets/overrides/bmad-code-review.toml").read_text()
+DEV_STORY_HOOK = (ROOT / "skills/storm-setup/assets/overrides/bmad-dev-story.toml").read_text()
+DEV_STORY_FLOW = (ROOT / "docs/dev-story-flow.md").read_text()
 HELP = (ROOT / "skills/module-help.csv").read_text()
 README = (ROOT / "README.md").read_text()
 
@@ -38,7 +40,7 @@ class PolytokenReviewContractTests(unittest.TestCase):
 
     def test_module_declares_separate_polytoken_roster_with_empty_default(self):
         """AC.1: installer exposes a portable, user-scoped Polytoken roster."""
-        self.assertIn("module_version: 0.2.0", MODULE)
+        self.assertIn("module_version: 0.3.0", MODULE)
         block = yaml_prompt_block("polytoken_review_models")
         for text in (
             "scope: user",
@@ -182,6 +184,28 @@ class PolytokenReviewContractTests(unittest.TestCase):
             self.assertIn("Polytoken subagents", row)
             self.assertIn("external CLI reviewers", row)
         self.assertNotIn("External-model code review panel", sx)
+
+    def test_polytoken_dev_story_plans_grills_and_hands_off_before_opening(self):
+        """Polytoken planning stays read-only until an approved goal-backed handoff."""
+        for text in (
+            "shipped `plan` facet",
+            "do not call `storm-linear open` yet",
+            "pre-flight grill is confirmed",
+            "`write_plan`",
+            "`handoff_plan`",
+            "do not call `propose_goal`",
+            "approved handoff activates the saved-session goal and enters `execute`",
+            "call `read_goal` and verify that the implementation goal is active",
+            "If no active goal exists, halt before opening the issue",
+            "invoke `storm-linear open` before making implementation changes",
+            "Outside Polytoken",
+        ):
+            self.assertIn(text, DEV_STORY_HOOK)
+        self.assertLess(DEV_STORY_HOOK.index("pre-flight grill is confirmed"), DEV_STORY_HOOK.index("`handoff_plan`"))
+        self.assertLess(DEV_STORY_HOOK.index("`handoff_plan`"), DEV_STORY_HOOK.index("invoke `storm-linear open` before making implementation changes"))
+        for text in ("plan facet", "approved handoff_plan", "saved goal + execute facet"):
+            self.assertIn(text, DEV_STORY_FLOW)
+        self.assertIn("Polytoken plans and grills in `plan`", README)
 
     def test_contract_suite_maps_every_acceptance_criterion(self):
         """AC.8: named contract checks explicitly cover AC.1 through AC.7."""

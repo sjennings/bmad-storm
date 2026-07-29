@@ -11,9 +11,10 @@ Design doctrine: *module for behavior, baseline overrides for wiring.* No instal
 | Skill | Role |
 |---|---|
 | `storm-setup` | Writes and verifies the sparse `_bmad/custom/` overrides; `check` mode audits wiring after upstream updates |
-| `storm-grilling` | One-question-at-a-time interview to shared understanding, with glossary/ADR capture (ported from [mattpocock/skills](https://github.com/mattpocock/skills), MIT) |
+| `storm-grilling` | One-question-at-a-time interview to shared understanding, with glossary/ADR capture and required seam agreement (ported from [mattpocock/skills](https://github.com/mattpocock/skills), MIT) |
+| `storm-tdd` | Red-green loop at the story's pre-agreed seams, with project gdUnit4 conventions (ported from mattpocock/skills `tdd`) |
 | `storm-linear` | Tracker operations (publish/open/close/slice/mirror/intake) under the phase-split authority contract in `reference/issue-tracker.md` |
-| `storm-spec-review` | Adversarial spec review panel: BMAD lenses + host-selected Polytoken subagents or external CLI reviewers, before publication |
+| `storm-spec-review` | Adversarial spec review panel: BMAD lenses + external-model reviewers, before publication |
 | `storm-cross-review` | Cross-model code review panel after `bmad-code-review`'s native pass; shared `reference/panel-protocol.md` |
 | `storm-reconcile` | Three-way drift audit: `epics.md` ↔ Linear ↔ `sprint-status.yaml`, phase-decides rule applied |
 | `storm-harness-improvement` | Bounded improvement loop; promotes trajectory lessons into their narrowest authoritative home |
@@ -33,14 +34,14 @@ Then finish wiring from your agent:
 > use the storm-setup skill
 ```
 
-Install prompts are stored in `_bmad/storm/config.yaml`: `linear_team`, `linear_team_key`, `grill_on_implement` (`full` | `gaps-only` | `off`), the two host-specific review rosters below, and `review_loop_max_rounds`.
+Install prompts (stored in `_bmad/storm/config.yaml`): `linear_team`, `linear_team_key`, `grill_on_implement` (`full` | `gaps-only` | `off`), `external_reviewers`, `polytoken_review_models`, and `review_loop_max_rounds`.
 
-- `external_reviewers`: comma-separated reviewer CLI command names for hosts outside Polytoken (for example, `codex,gemini`); the backward-compatible default is `codex`.
-- `polytoken_review_models`: comma-separated fully qualified model references used only under Polytoken; empty by default. Each entry may be a bare model ID such as `codex/gpt-5`, or append Polytoken's optional `<model-id>(<effort-level>)` suffix, such as `codex/gpt-5(high)`. These are examples, not guaranteed installed models or supported effort levels. Effort levels are model-specific; omitting the suffix uses the model's configured default effort.
+Review backends are host-specific:
 
-Polytoken sessions use native subagents and never invoke or fall back to `external_reviewers`. Empty, unavailable, or failed Polytoken model rosters are reported prominently. Detailed backend detection, execution, artifacts, and failure behavior are authoritative in `skills/storm-cross-review/reference/panel-protocol.md`.
+- `external_reviewers` configures comma-separated authenticated reviewer CLIs (for example `codex,gemini`) outside Polytoken.
+- `polytoken_review_models` configures operator-configured, fully qualified model IDs for Polytoken subagents and is empty by default. Under Polytoken, review uses only operator-configured and available fully qualified model IDs; never invoke or fall back to reviewer CLIs.
 
-Existing installations must rerun the BMAD module installer/update flow to materialize `polytoken_review_models`, then run `> use the storm-setup skill with argument check` to verify wiring. Run the same setup check after any BMAD update.
+After changing either roster, rerun the BMAD module installer/update flow so `_bmad/storm/config.yaml` is refreshed. After any BMAD update, run `> use the storm-setup skill with argument check`.
 
 ## How the wiring lands
 
@@ -48,13 +49,13 @@ Existing installations must rerun the BMAD module installer/update flow to mater
 
 - `bmad-agent-dev.toml`, `bmad-agent-pm.toml` — tracker contract injected agent-wide via `persistent_facts`
 - `bmad-create-story.toml` — grilling at authoring; `on_complete` → spec review offer → `storm-linear publish` → `ready-for-dev`
-- `bmad-dev-story.toml` — issue → `In Progress` + gated pre-flight grill at entry; `on_complete` → completion record → `Done` → sprint reconcile
+- `bmad-dev-story.toml` — Polytoken plans and grills in `plan`, then an approved handoff activates a goal and enters `execute` before issue → `In Progress`; other hosts retain issue-open + gated grill at entry; `on_complete` → completion record → `Done` → sprint reconcile
 - `bmad-code-review.toml` — `on_complete` → `storm-cross-review` merge-and-loop
 - `bmad-correct-course.toml` — `on_complete` → `storm-linear mirror`
 
 ## Requirements
 
-BMAD v6.10+ with the BMM module; the `linear-server` MCP tools; `uv` (or Python 3.11+) for the customization resolver; and, for Tier 2 cross-model panels, either Polytoken with operator-configured and available fully qualified model IDs or authenticated external reviewer CLIs on non-Polytoken hosts. Missing or failed reviewers are reported and skipped without failing the review step.
+BMAD v6.10+ with the BMM module; the `linear-server` MCP tools; `uv` (or Python 3.11+) for the customization resolver; optionally, authenticated external reviewer CLIs for cross-model panels (missing reviewers are skipped with a warning).
 
 ## License
 

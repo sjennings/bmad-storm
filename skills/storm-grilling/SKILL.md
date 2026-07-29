@@ -19,7 +19,7 @@ Load `{project-root}/_bmad/storm/config.yaml` for `grill_on_implement`. Project 
 
 ## Modes
 
-**`full`** — complete interview. Restate the scope faithfully in glossary vocabulary, then walk every branch: ambiguities, seams and their test points, save/schema implications, AI-vs-player parity, modifier gating, out-of-scope boundaries.
+**`full`** — complete interview. Restate the scope faithfully in glossary vocabulary, then walk every branch: ambiguities, seams and their test points, save/schema implications, AI-vs-player parity, modifier gating, out-of-scope boundaries. **Seam agreement is a required outcome**: before convergence, the operator has confirmed the list of seams under test — the public boundaries where behavior will be verified (see `storm-tdd`). Testing effort goes where this list says, nowhere else.
 
 **`gaps-only`** — for implementation entry when a published spec exists. Do NOT re-interview settled scope. Read the spec, list only what it leaves ambiguous or unstated, probe exactly those, then ask for a single confirmation of shared understanding. If the spec settles everything, say so and ask one confirmation question — a two-minute check, not a second interview.
 
@@ -43,4 +43,4 @@ Load `{project-root}/_bmad/storm/config.yaml` for `grill_on_implement`. Project 
 
 ## Handoff
 
-When the interview converges, state the shared understanding in a compact summary (decisions made, terms resolved, ADRs recorded, open items deliberately deferred) and return control to the calling workflow. This skill writes no story files and mutates no tracking state.
+When the interview converges, state the shared understanding in a compact summary: decisions made, terms resolved, ADRs recorded, open items deliberately deferred, and — from full mode — the agreed **Seams & test points** list. The calling workflow (`bmad-create-story`) must carry that list into the story draft's dev notes under a `Seams & test points` heading; it is what `storm-tdd` tests against during implementation. This skill itself writes no story files and mutates no tracking state.
