@@ -1,0 +1,13 @@
+{
+  "name": "balanced",
+  "description": "Full-size model for judgment and implementation roles; mid-size model for reconnaissance and media lanes.",
+  "roles": {
+    "storm-explorer": { "model": "default_model:mini" },
+    "storm-librarian": { "model": "default_model:mini" },
+    "storm-oracle": { "model": "default_model:full" },
+    "storm-observer": { "model": "default_model:mini" },
+    "storm-fixer": { "model": "default_model:full" },
+    "storm-designer": { "model": "default_model:full" },
+    "storm-councillor": { "model": "default_model:full" }
+  }
+}

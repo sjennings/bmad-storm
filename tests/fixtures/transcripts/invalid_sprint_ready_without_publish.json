@@ -1,0 +1,8 @@
+{
+  "scenario": "Sprint ready-for-dev without a successful publish violates publication atomicity",
+  "events": [
+    {"event": "scope_resolved"},
+    {"event": "grill_confirmed"},
+    {"event": "sprint_ready_updated"}
+  ]
+}

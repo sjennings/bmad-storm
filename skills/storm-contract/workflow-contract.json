@@ -1,0 +1,220 @@
+{
+  "contract_version": "1.0.0",
+  "module": "storm",
+  "name": "storm-canonical-workflow",
+  "summary": "Machine-readable canonical Storm development workflow: BMAD owns pre-publication scope, Linear owns post-publication execution, and Polytoken execution follows plan -> reviewed handoff_plan -> active saved goal -> execute -> read_goal -> storm-linear open -> mutation. Aliases delegate to canonical operations and never reimplement state transitions.",
+  "enforcement": {
+    "level": "directive",
+    "statement": "This contract is enforced at the directive/prompt and permission-classifier level plus the deterministic validators listed below. Polytoken does not provide a physical sandbox that makes plan-facet mutation impossible; the shipped plan facet exposes shell_exec, so its read-only posture is prompt- and permission-enforced. Deterministic validators prove contract conformance of transcripts and assets; only disposable Polytoken smoke sessions prove live tool behavior. Documentation and diagnostics must state this limitation explicitly and must never claim a physical sandbox.",
+    "validators": [
+      "skills/storm-contract/validate_transcript.py",
+      "tests/test_workflow_contract.py",
+      "tests/test_scheduler.py"
+    ],
+    "smoke_scenarios": [
+      "smoke_plan_handoff_goal_open_gate",
+      "smoke_role_tool_contracts"
+    ]
+  },
+  "authorities": {
+    "pre_publication": {
+      "owner": "bmad",
+      "artifacts": ["epics.md", "sprint-status.yaml", "story file"],
+      "rule": "BMAD planning artifacts own scope and pre-publication status. The Linear issue, if it exists yet, is not authoritative."
+    },
+    "post_publication": {
+      "owner": "linear",
+      "artifacts": ["Linear issue carrying the story-key-anchored spec"],
+      "rule": "Linear owns implementation context and execution state from In Progress to Done. Local authoring files are evidence/history, not competing authority."
+    },
+    "handoff_point": "storm-linear.publish",
+    "phase_decides_rule": "Pre-publication, sprint-status.yaml wins; post-publication, Linear wins; on disagreement the phase decides. If the phase cannot be determined, stop and ask rather than overwrite."
+  },
+  "artifact_lifecycle": {
+    "before_publication": "epics.md, sprint-status.yaml, and the BMAD story file own scope/context.",
+    "at_publication": "storm-linear publish writes the story-key-anchored spec to the Linear issue, sets Todo + ready-for-agent, then updates the sprint entry to ready-for-dev only after successful publication.",
+    "after_publication": "Linear owns implementation context/state; local authoring files are evidence/history, not competing authority.",
+    "parallel_authority": "forbidden"
+  },
+  "execution_chain": [
+    "plan_facet",
+    "write_plan",
+    "plan_reviewed",
+    "handoff_plan_approved",
+    "goal_activated",
+    "execute_facet",
+    "read_goal_verified",
+    "storm-linear.open",
+    "open_verified",
+    "mutation"
+  ],
+  "settings": {
+    "review_loop_max_rounds": {
+      "scope": "team",
+      "default": 3,
+      "rule": "The only source for the review round cap. Directives and templates must reference this setting, never a hard-coded number. Fixes require a complete fresh review pass; non-convergence at the cap leaves the issue In Progress and is reported."
+    },
+    "completion_commit_policy": {
+      "default": "require-explicit",
+      "allowed": ["require-explicit", "allow-without-storm-commit"],
+      "rule": "No Storm role commits without explicit operator authority. Under require-explicit, close requires a completed authorized commit: absent or denied commit authority — or authority without a completed commit — leaves the issue In Progress and is reported; no directive may auto-commit. Under allow-without-storm-commit, close may proceed without a Storm-created commit, but commit_completed still always requires prior commit_authorized."
+    },
+    "grill_on_implement": {
+      "default": "gaps-only",
+      "allowed": ["full", "gaps-only", "off"]
+    }
+  },
+  "operations": {
+    "bmad-create-epics-and-stories": {"kind": "canonical", "phase": "scope", "authority": "bmad", "effects": ["epics.md scope"]},
+    "bmad-correct-course": {"kind": "canonical", "phase": "scope", "authority": "bmad", "effects": ["epics.md scope", "storm-linear.mirror"]},
+    "bmad-sprint-planning": {"kind": "canonical", "phase": "scope", "authority": "bmad", "effects": ["sprint-status.yaml"]},
+    "bmad-create-story": {"kind": "canonical", "phase": "authoring", "authority": "bmad", "effects": ["story file", "storm-grilling.full", "storm-linear.publish"]},
+    "storm-grilling": {"kind": "canonical", "phase": "authoring", "authority": "bmad", "effects": ["shared understanding", "glossary/ADR updates"]},
+    "storm-spec-review": {"kind": "canonical", "phase": "authoring", "authority": "bmad", "effects": ["pre-publication review packet"], "required": false},
+    "storm-linear.publish": {"kind": "canonical", "phase": "publication", "authority": "handoff", "preconditions": ["grill_confirmed"], "effects": ["Linear spec", "Todo", "ready-for-agent", "sprint ready-for-dev"]},
+    "storm-linear.slice": {"kind": "canonical", "phase": "publication", "authority": "linear", "preconditions": ["publish_succeeded"], "effects": ["child tickets", "blocking edges"], "invocation": "operator-only"},
+    "storm-linear.mirror": {"kind": "canonical", "phase": "scope", "authority": "bmad", "effects": ["Linear issue mirror of BMAD scope"]},
+    "storm-linear.intake": {"kind": "canonical", "phase": "scope", "authority": "linear", "effects": ["project-less needs-triage issue"]},
+    "bmad-dev-story": {"kind": "canonical", "phase": "implementation", "authority": "linear", "preconditions": ["execution_chain"], "effects": ["implementation mutations", "tests"]},
+    "storm-linear.open": {"kind": "canonical", "phase": "implementation", "authority": "linear", "preconditions": ["goal_activated", "execute_facet", "read_goal_verified"], "effects": ["issue In Progress"]},
+    "storm-tdd": {"kind": "canonical", "phase": "implementation", "authority": "linear", "effects": ["test-first at confirmed seams"]},
+    "bmad-code-review": {"kind": "canonical", "phase": "review", "authority": "linear", "effects": ["native adversarial review"]},
+    "storm-cross-review": {"kind": "canonical", "phase": "review", "authority": "linear", "effects": ["cross-model panel triage"], "round_cap_setting": "review_loop_max_rounds"},
+    "storm-linear.close": {"kind": "canonical", "phase": "close", "authority": "linear", "preconditions": ["review_clean", "completion_commented", "completion_commit_policy"], "effects": ["completion record", "Done", "story-only sprint reconcile"]},
+    "storm-reconcile": {"kind": "canonical", "phase": "hygiene", "authority": "phase-decides", "effects": ["drift report", "approved fixes only"]},
+    "storm-harness-improvement": {"kind": "canonical", "phase": "hygiene", "authority": "operator", "effects": ["harness change proposals"]}
+  },
+  "aliases": {
+    "/create-story": {
+      "status": "alias",
+      "canonical_operations": ["bmad-create-story"],
+      "rule": "Delegates to bmad-create-story with storm overrides (grilling + publish hook); it never resolves, drafts, or publishes independently."
+    },
+    "/to-spec": {
+      "status": "alias",
+      "canonical_operations": ["storm-linear.publish"],
+      "rule": "Thin adapter to the publication operation inside bmad-create-story on_complete; it never publishes outside that handoff."
+    },
+    "/to-tickets": {
+      "status": "alias",
+      "canonical_operations": ["storm-linear.slice"],
+      "rule": "Thin post-publication adapter to storm-linear slice; operator-invoked only, never a workflow step."
+    },
+    "/implement": {
+      "status": "alias",
+      "canonical_operations": ["bmad-dev-story", "storm-tdd", "storm-linear.open", "storm-linear.close"],
+      "rule": "Delegates to bmad-dev-story; under Polytoken it always follows plan -> reviewed handoff_plan -> active goal -> execute -> read_goal -> storm-linear open -> mutation. It never opens, commits, or closes independently."
+    },
+    "/tdd": {
+      "status": "alias",
+      "canonical_operations": ["storm-tdd"],
+      "rule": "Delegates to storm-tdd at the story's pre-agreed seams."
+    },
+    "/code-review": {
+      "status": "alias",
+      "canonical_operations": ["bmad-code-review", "storm-cross-review"],
+      "rule": "Delegates to bmad-code-review whose on_complete runs storm-cross-review; one merged triage and one loop."
+    },
+    "/wayfinder": {
+      "status": "retired",
+      "canonical_operations": [],
+      "rule": "No storm equivalent; must not be advertised as active."
+    },
+    "story-execute": {
+      "status": "retired",
+      "canonical_operations": [],
+      "rule": "Retired independent tracker/commit/close ownership; any retained worker is bounded and parent-controlled. Must not be advertised as active."
+    },
+    "story-plan": {
+      "status": "retired",
+      "canonical_operations": [],
+      "rule": "Retired; replaced by bmad-create-story with storm overrides. Must not be advertised as active."
+    }
+  },
+  "states": {
+    "initial": "scoped",
+    "terminal": ["reconciled", "child_done", "halted_pre_open", "halted_in_progress"],
+    "definitions": {
+      "scoped": "Story exists in epics.md and sprint-status.yaml backlog; BMAD authority.",
+      "authoring": "bmad-create-story active; story resolution and context loading done.",
+      "authored": "Grilling confirmed shared understanding; story file drafted; optional spec review done or declined.",
+      "published": "storm-linear publish succeeded; issue carries the story-key-anchored spec at Todo + ready-for-agent.",
+      "ready_for_dev": "sprint-status.yaml entry moved to ready-for-dev after successful publication.",
+      "planning": "Polytoken plan facet; implementation plan recorded with write_plan. Issue remains Todo.",
+      "plan_reviewed": "Plan review discipline complete; ready for handoff_plan.",
+      "goal_activated": "handoff_plan approved; saved-session goal active; execute facet entered.",
+      "executing": "Execute facet active; goal not yet re-verified in this session.",
+      "goal_verified": "read_goal confirms the implementation goal is active.",
+      "open": "storm-linear open moved the issue (or child ticket) to In Progress.",
+      "implementing": "Open verified; implementation mutation, TDD seams, and red/green evidence permitted.",
+      "native_reviewed": "bmad-code-review native adversarial layers passed.",
+      "review_clean": "storm-cross-review panel passed; findings dispositioned.",
+      "close_ready": "Completion record commented on the issue before any state change.",
+      "done": "Story issue moved to Done.",
+      "reconciled": "sprint-status.yaml reconciled to done under the story key (story close only).",
+      "child_done": "Child ticket moved to Done; nothing reconciled; last child reports the story ready to close.",
+      "halted_pre_open": "Handoff rejected/cancelled or no active goal; issue remains Todo; mutation forbidden.",
+      "halted_in_progress": "Non-clean exit (review non-converged, tests failing, denied commit authority); issue remains In Progress."
+    }
+  },
+  "transitions": [
+    {"event": "scope_resolved", "from": ["scoped"], "to": "authoring"},
+    {"event": "grill_confirmed", "from": ["authoring"], "to": "authored"},
+    {"event": "spec_review_completed", "from": ["authored"], "to": "authored"},
+    {"event": "publish_succeeded", "from": ["authored"], "to": "published"},
+    {"event": "publish_failed", "from": ["authored"], "to": "authored", "note": "Atomic publish failure: sprint-status.yaml is untouched and the failure is reported with exactly what should have been written."},
+    {"event": "sprint_ready_updated", "from": ["published"], "to": "ready_for_dev"},
+    {"event": "slice_completed", "from": ["published", "ready_for_dev"], "to": "self", "note": "Operator-invoked only. Self-transition: slicing never advances state and never substitutes for sprint_ready_updated — slicing from published still requires sprint_ready_updated before planning may begin."},
+    {"event": "plan_created", "from": ["ready_for_dev", "halted_pre_open"], "to": "planning"},
+    {"event": "plan_reviewed", "from": ["planning"], "to": "plan_reviewed"},
+    {"event": "handoff_approved", "from": ["plan_reviewed"], "to": "goal_activated"},
+    {"event": "handoff_rejected", "from": ["planning", "plan_reviewed"], "to": "halted_pre_open"},
+    {"event": "handoff_cancelled", "from": ["planning", "plan_reviewed"], "to": "halted_pre_open"},
+    {"event": "execute_entered", "from": ["goal_activated"], "to": "executing"},
+    {"event": "goal_verified", "from": ["executing"], "to": "goal_verified", "note": "read_goal confirms the saved implementation goal is active. If no active goal exists, halt before opening the issue."},
+    {"event": "issue_opened", "from": ["goal_verified"], "to": "open", "fields": {"target": ["story", "child"]}},
+    {"event": "open_verified", "from": ["open"], "to": "implementing", "note": "The session re-reads the issue and confirms In Progress before any implementation mutation."},
+    {"event": "mutation", "from": ["implementing"], "to": "implementing"},
+    {"event": "seam_confirmed", "from": ["implementing"], "to": "implementing"},
+    {"event": "red_evidence", "from": ["implementing"], "to": "implementing"},
+    {"event": "green_evidence", "from": ["implementing"], "to": "implementing"},
+    {"event": "native_review_passed", "from": ["implementing"], "to": "native_reviewed"},
+    {"event": "cross_review_passed", "from": ["native_reviewed"], "to": "review_clean"},
+    {"event": "finding_dispositioned", "from": ["native_reviewed", "review_clean"], "to": "self"},
+    {"event": "fix_applied", "from": ["native_reviewed", "review_clean"], "to": "implementing", "guard": "review_round_cap", "note": "Every fix requires a complete fresh review pass: native_review_passed and cross_review_passed must both recur before close."},
+    {"event": "review_halted_non_converged", "from": ["implementing", "native_reviewed", "review_clean"], "to": "halted_in_progress"},
+    {"event": "commit_authorized", "from": ["review_clean"], "to": "review_clean", "note": "Explicit operator authority; the only source of commit permission."},
+    {"event": "commit_completed", "from": ["review_clean"], "to": "review_clean", "guard": "commit_authorized_seen"},
+    {"event": "completion_commented", "from": ["review_clean"], "to": "close_ready", "guard": "close_policy", "note": "Completion record (what shipped, verification actually run, declined findings with reasons, deferred follow-ups) is commented BEFORE any state change."},
+    {"event": "issue_closed", "from": ["close_ready"], "to": "done", "guard": "story_target"},
+    {"event": "child_closed", "from": ["close_ready"], "to": "child_done", "guard": "child_target"},
+    {"event": "sprint_reconciled", "from": ["done"], "to": "reconciled", "note": "Story close only. Unreachable from child_done: a child-ticket close reconciles nothing."},
+    {"event": "child_roll_up_reported", "from": ["child_done"], "to": "child_done", "note": "The last child's session reports the story as ready to close rather than closing the parent."}
+  ],
+  "guards": {
+    "review_round_cap": "fix_applied is allowed only while the fresh pass it triggers stays within review_loop_max_rounds: fix_count + 2 <= max_rounds. Past the cap the only valid review exit is review_halted_non_converged, which leaves the issue In Progress.",
+    "commit_authorized_seen": "commit_completed requires a prior commit_authorized event in the same transcript. No commit without explicit authority.",
+    "close_policy": "completion_commented requires completion_commit_policy == allow-without-storm-commit or a prior successful commit_completed event (which itself requires a prior commit_authorized). Under require-explicit, commit authority without a completed commit — or absent/denied authority — halts with the issue In Progress.",
+    "story_target": "issue_closed requires the opened target to be a story issue.",
+    "child_target": "child_closed requires the opened target to be a child ticket. Child sessions never mutate, close, or reconcile the parent story."
+  },
+  "review_policy": {
+    "round_cap_setting": "review_loop_max_rounds",
+    "fresh_pass_required_after_fix": true,
+    "non_convergence": "leave the issue In Progress and report outstanding items",
+    "single_triage": "The generic three-lens reviewer is only an implementation detail feeding the single native-plus-cross-review triage and loop."
+  },
+  "child_story_rules": {
+    "open_ownership": "The execute session that opens an issue owns closing it out.",
+    "child_close": "A child-ticket close reconciles nothing and never closes, mutates, or reconciles the parent story.",
+    "roll_up": "The last open child's session reports the story as ready to close; the parent story is closed only by its own session."
+  },
+  "halt_conditions": [
+    "rejected or cancelled handoff_plan leaves the issue Todo with no implementation mutation",
+    "absent active saved goal after handoff blocks storm-linear open",
+    "failed or unverified open blocks implementation mutation",
+    "review non-convergence at review_loop_max_rounds leaves the issue In Progress",
+    "denied or absent commit authority under require-explicit leaves the issue In Progress",
+    "non-clean exit of any kind leaves the issue In Progress and is reported explicitly"
+  ]
+}

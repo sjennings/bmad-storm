@@ -1,0 +1,10 @@
+{
+  "scenario": "Atomic publish failure leaves sprint untouched; retry succeeds",
+  "events": [
+    {"event": "scope_resolved"},
+    {"event": "grill_confirmed"},
+    {"event": "publish_failed"},
+    {"event": "publish_succeeded"},
+    {"event": "sprint_ready_updated"}
+  ]
+}

@@ -1,7 +1,7 @@
 code: storm
 name: "August Storm Harness"
 description: "Project harness for August Storm on BMAD: Linear phase-split source of truth, grilling interviews, cross-model spec/code review panels, tracker drift reconciliation, harness improvement loop. Requires the BMad Method (bmm) module."
-module_version: 0.3.0
+module_version: 0.4.0
 default_selected: false
 
 module_greeting: >
@@ -68,3 +68,51 @@ review_loop_max_rounds:
   scope: team
   default: "3"
   result: "{value}"
+
+completion_commit_policy:
+  prompt:
+    - "How should Storm handle completion when no explicit commit authority is available?"
+    - "require-explicit leaves the issue In Progress when commit authority is absent or denied; allow-without-storm-commit permits a clean close without a Storm-created commit."
+  scope: team
+  default: "require-explicit"
+  result: "{value}"
+  single-select:
+    - value: "require-explicit"
+      label: "Require explicit commit authority"
+    - value: "allow-without-storm-commit"
+      label: "Allow completion without a Storm-created commit"
+
+polytoken_team_profile:
+  prompt: "Managed Polytoken specialist profile to activate for this project (quality, balanced, economy, or inherit)."
+  scope: user
+  default: "balanced"
+  result: "{value}"
+
+polytoken_role_model_overrides:
+  prompt: "Optional comma-separated role=model overrides for managed Polytoken specialists; use exact configured references and never put credentials here."
+  scope: user
+  default: ""
+  result: "{value}"
+
+polytoken_council_models:
+  prompt: "Comma-separated exact Polytoken model references for manual Council members; no silent fallback is used."
+  scope: user
+  default: ""
+  result: "{value}"
+
+polytoken_max_parallel_jobs:
+  prompt: "Maximum independent Storm specialist jobs the coordinator may run concurrently."
+  scope: team
+  default: "2"
+  result: "{value}"
+
+polytoken_continue_on_idle:
+  prompt: "Enable one-shot continuation after safe idle turns? Continuation is disabled by default and stops on uncertainty."
+  scope: user
+  default: "off"
+  result: "{value}"
+  single-select:
+    - value: "off"
+      label: "Off"
+    - value: "on"
+      label: "On, with bounded stop-hook continuation"

@@ -1,0 +1,13 @@
+{
+  "name": "quality",
+  "description": "Maximum capability on every role. Uses the full-size default model alias for all specialists, including reconnaissance lanes.",
+  "roles": {
+    "storm-explorer": { "model": "default_model:full" },
+    "storm-librarian": { "model": "default_model:full" },
+    "storm-oracle": { "model": "default_model:full" },
+    "storm-observer": { "model": "default_model:full" },
+    "storm-fixer": { "model": "default_model:full" },
+    "storm-designer": { "model": "default_model:full" },
+    "storm-councillor": { "model": "default_model:full" }
+  }
+}

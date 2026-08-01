@@ -1,0 +1,111 @@
+{
+  "manifest_version": 1,
+  "storm_version": "0.4.0",
+  "description": "Storm-managed Polytoken assets. storm-setup projects these into a consuming project's .polytoken/ surface with ownership metadata; checksums are refreshed by scripts/validate_polytoken_assets.py --refresh and verified by tests.",
+  "assets": [
+    {
+      "source": "subagents/storm-explorer.md",
+      "target": ".polytoken/subagents/storm-explorer.md",
+      "kind": "subagent",
+      "merge": "managed-file",
+      "required": true,
+      "sha256": "b72ba911a2c4d4d3b50d5cf05ab06d46d50d3c6feeec6c6a7d9220705b932d5f"
+    },
+    {
+      "source": "subagents/storm-librarian.md",
+      "target": ".polytoken/subagents/storm-librarian.md",
+      "kind": "subagent",
+      "merge": "managed-file",
+      "required": true,
+      "sha256": "d195a6c8b08020ea8a877b33a0464e551118130f6fb660de16d8ea2de1020eab"
+    },
+    {
+      "source": "subagents/storm-oracle.md",
+      "target": ".polytoken/subagents/storm-oracle.md",
+      "kind": "subagent",
+      "merge": "managed-file",
+      "required": true,
+      "sha256": "7b702663413c5a60449cc0743a2942dc5df107d209424b6be6e1db775ab3a731"
+    },
+    {
+      "source": "subagents/storm-observer.md",
+      "target": ".polytoken/subagents/storm-observer.md",
+      "kind": "subagent",
+      "merge": "managed-file",
+      "required": true,
+      "sha256": "3e9a0de9ed2ae9b5bf68b010c4850eb03c2a21e07d97f222f22af725dcbe4955"
+    },
+    {
+      "source": "subagents/storm-fixer.md",
+      "target": ".polytoken/subagents/storm-fixer.md",
+      "kind": "subagent",
+      "merge": "managed-file",
+      "required": true,
+      "sha256": "9dd197f78061bf4e678796ae708bdb3ab082cfc25c9c5644513c6e487c536680"
+    },
+    {
+      "source": "subagents/storm-designer.md",
+      "target": ".polytoken/subagents/storm-designer.md",
+      "kind": "subagent",
+      "merge": "managed-file",
+      "required": true,
+      "sha256": "f7909379ded4effd17f09f82ab1bf3c79a8cb357a8ff2b4370dbc334e8b96c2e"
+    },
+    {
+      "source": "subagents/storm-councillor.md",
+      "target": ".polytoken/subagents/storm-councillor.md",
+      "kind": "subagent",
+      "merge": "managed-file",
+      "required": true,
+      "sha256": "7b7017eac386a595316ad8f9fbe674798825e65b7e5f56d529951054018c42aa"
+    },
+    {
+      "source": "profiles/quality.json",
+      "target": ".polytoken/storm/profiles/quality.json",
+      "kind": "profile",
+      "merge": "managed-file",
+      "required": true,
+      "sha256": "67b3525d85b4d666734a46dce76780d350916c3c59c8fc2d6f875274a0201023"
+    },
+    {
+      "source": "profiles/balanced.json",
+      "target": ".polytoken/storm/profiles/balanced.json",
+      "kind": "profile",
+      "merge": "managed-file",
+      "required": true,
+      "sha256": "6e0a1b548b2b995ced8a17894194460a5be9a847cd063e3f551587409b742843"
+    },
+    {
+      "source": "profiles/economy.json",
+      "target": ".polytoken/storm/profiles/economy.json",
+      "kind": "profile",
+      "merge": "managed-file",
+      "required": true,
+      "sha256": "2b1fb4e4df1c8a223a8173f94172758ef5a30b2099d70b8b6c105c1a636899d4"
+    },
+    {
+      "source": "profiles/inherit.json",
+      "target": ".polytoken/storm/profiles/inherit.json",
+      "kind": "profile",
+      "merge": "managed-file",
+      "required": true,
+      "sha256": "b426cc58a3a19000e33b99903b1bc7f9df8bdbb67096ab260e68c861ce17d8cb"
+    },
+    {
+      "source": "hooks/storm-continue-on-idle.sh",
+      "target": ".polytoken/hooks/storm-continue-on-idle.sh",
+      "kind": "hook-script",
+      "merge": "managed-file",
+      "required": false,
+      "sha256": "24d87c85d35f9dc6ac9cad2adbbd26cd9f24f64a05dfdcbb9584666e8bfa0c1a"
+    },
+    {
+      "source": "hooks/hooks.fragment.json",
+      "target": ".polytoken/hooks.json",
+      "kind": "hook-fragment",
+      "merge": "merge-by-name",
+      "required": false,
+      "sha256": "c15aa5b11433c615ba04ea2274ed36593e570f7132b0c844ec0dc93c4e7644a4"
+    }
+  ]
+}

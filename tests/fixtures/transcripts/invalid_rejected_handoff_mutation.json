@@ -1,0 +1,13 @@
+{
+  "scenario": "Rejected handoff must block implementation mutation",
+  "events": [
+    {"event": "scope_resolved"},
+    {"event": "grill_confirmed"},
+    {"event": "publish_succeeded"},
+    {"event": "sprint_ready_updated"},
+    {"event": "plan_created"},
+    {"event": "plan_reviewed"},
+    {"event": "handoff_rejected"},
+    {"event": "mutation"}
+  ]
+}

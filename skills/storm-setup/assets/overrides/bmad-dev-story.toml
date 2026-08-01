@@ -17,7 +17,14 @@ activation_steps_append = [
 # Fires after the story implementation is complete and status is updated.
 on_complete = """
 Close out per the storm contract — only after a clean exit (review loop clean
-including storm-cross-review, build and full test suite green, work committed):
+including storm-cross-review and build/full test suite green). Read
+`completion_commit_policy` from `{project-root}/_bmad/storm/config.yaml`:
+
+- Under `require-explicit`, require explicit commit authority and a successful
+  authorized commit before closing. If authority is absent or denied, leave the
+  issue In Progress and report it; never auto-commit.
+- Under `allow-without-storm-commit`, a clean verified implementation may close
+  without a Storm-created commit, and the completion record must say so.
 
 1. Invoke `storm-linear close`: comment the completion record on the issue
    BEFORE changing state — what shipped, the verification actually run with its

@@ -1,0 +1,16 @@
+{
+  "scenario": "Pre-open-verification mutation is rejected",
+  "events": [
+    {"event": "scope_resolved"},
+    {"event": "grill_confirmed"},
+    {"event": "publish_succeeded"},
+    {"event": "sprint_ready_updated"},
+    {"event": "plan_created"},
+    {"event": "plan_reviewed"},
+    {"event": "handoff_approved"},
+    {"event": "execute_entered"},
+    {"event": "goal_verified"},
+    {"event": "issue_opened", "target": "story"},
+    {"event": "mutation"}
+  ]
+}

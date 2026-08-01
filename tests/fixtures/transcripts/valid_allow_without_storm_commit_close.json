@@ -1,0 +1,23 @@
+{
+  "scenario": "allow-without-storm-commit policy allows close without a Storm-created commit",
+  "policy": "allow-without-storm-commit",
+  "events": [
+    {"event": "scope_resolved"},
+    {"event": "grill_confirmed"},
+    {"event": "publish_succeeded"},
+    {"event": "sprint_ready_updated"},
+    {"event": "plan_created"},
+    {"event": "plan_reviewed"},
+    {"event": "handoff_approved"},
+    {"event": "execute_entered"},
+    {"event": "goal_verified"},
+    {"event": "issue_opened", "target": "story"},
+    {"event": "open_verified"},
+    {"event": "mutation"},
+    {"event": "native_review_passed"},
+    {"event": "cross_review_passed"},
+    {"event": "completion_commented"},
+    {"event": "issue_closed"},
+    {"event": "sprint_reconciled"}
+  ]
+}

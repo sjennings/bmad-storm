@@ -1,0 +1,13 @@
+{
+  "name": "inherit",
+  "description": "No model pinning: every specialist inherits the session's active model at spawn time. Role entries intentionally carry no model key.",
+  "roles": {
+    "storm-explorer": {},
+    "storm-librarian": {},
+    "storm-oracle": {},
+    "storm-observer": {},
+    "storm-fixer": {},
+    "storm-designer": {},
+    "storm-councillor": {}
+  }
+}

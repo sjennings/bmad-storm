@@ -1,0 +1,16 @@
+[
+  {
+    "name": "storm-continue-on-idle",
+    "event": "stop",
+    "handler": {
+      "bash": "bash \"${POLYTOKEN_PROJECT_DIR:-.}/.polytoken/hooks/storm-continue-on-idle.sh\" stop"
+    }
+  },
+  {
+    "name": "storm-continue-reset",
+    "event": "pre_user_prompt",
+    "handler": {
+      "bash": "bash \"${POLYTOKEN_PROJECT_DIR:-.}/.polytoken/hooks/storm-continue-on-idle.sh\" pre_user_prompt"
+    }
+  }
+]

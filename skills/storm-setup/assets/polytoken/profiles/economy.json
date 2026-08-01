@@ -1,0 +1,13 @@
+{
+  "name": "economy",
+  "description": "Lowest cost posture: mid-size model for judgment and implementation roles, smallest model for reconnaissance and media lanes.",
+  "roles": {
+    "storm-explorer": { "model": "default_model:nano" },
+    "storm-librarian": { "model": "default_model:nano" },
+    "storm-oracle": { "model": "default_model:mini" },
+    "storm-observer": { "model": "default_model:nano" },
+    "storm-fixer": { "model": "default_model:mini" },
+    "storm-designer": { "model": "default_model:mini" },
+    "storm-councillor": { "model": "default_model:mini" }
+  }
+}

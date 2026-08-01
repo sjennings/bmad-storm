@@ -1,0 +1,7 @@
+{
+  "scenario": "Unknown events are rejected rather than ignored",
+  "events": [
+    {"event": "scope_resolved"},
+    {"event": "teleport_to_done"}
+  ]
+}
