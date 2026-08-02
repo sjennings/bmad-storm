@@ -1,0 +1,24 @@
+{
+  "scenario": "Storm Build implementation reaches Linear Done, then its one planner reconciliation call fails",
+  "events": [
+    {"event": "scope_resolved"},
+    {"event": "grill_confirmed"},
+    {"event": "publish_succeeded"},
+    {"event": "sprint_ready_updated"},
+    {"event": "plan_created"},
+    {"event": "plan_reviewed"},
+    {"event": "handoff_approved"},
+    {"event": "execute_entered"},
+    {"event": "goal_verified"},
+    {"event": "issue_opened", "target": "story"},
+    {"event": "open_verified"},
+    {"event": "mutation"},
+    {"event": "native_review_passed"},
+    {"event": "cross_review_passed"},
+    {"event": "commit_authorized"},
+    {"event": "commit_completed"},
+    {"event": "completion_commented"},
+    {"event": "issue_closed"},
+    {"event": "planner_reconciliation_failed"}
+  ]
+}

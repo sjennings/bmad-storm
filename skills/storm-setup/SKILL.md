@@ -5,43 +5,103 @@ description: Write and verify the sparse _bmad/custom/ overrides that wire the s
 
 # Storm Setup
 
-Wires storm into BMAD exclusively through the documented-stable customization surface. This skill owns the overrides so the wiring is reproducible and versioned in the module — never hand-maintained.
+Wires the narrowly scoped Storm compatibility facts into BMAD through the documented-stable customization surface. This skill owns the overrides so the wiring is reproducible and versioned in the module — never hand-maintained. Current upstream `bmad-build` has no supported route/phase callback, so the explicit `storm-build` skill owns Storm lifecycle routing; direct Build and legacy shim calls remain intentionally unwrapped.
 
 ## Preconditions
 
 - The BMM module is installed (`{project-root}/_bmad/bmm/config.yaml` exists). If not, stop: storm requires BMM.
 - Storm's own config exists (`{project-root}/_bmad/storm/config.yaml`, written by the installer from module.yaml prompts). If not, tell the operator to re-run `npx bmad-method install` with the storm module selected.
+- For the native OpenCode route, OMO-Slim must already be installed; Storm never installs or configures it.
+- The `linear-server` MCP must already be installed and configured. This is a hard requirement; Storm does not provide a Linear endpoint or auth flow.
 
 ## Install mode (default)
 
-For each template in this skill's `assets/overrides/` directory (`bmad-agent-dev.toml`, `bmad-agent-pm.toml`, `bmad-create-story.toml`, `bmad-dev-story.toml`, `bmad-code-review.toml`, `bmad-correct-course.toml`):
+The versioned template inventory is exactly:
 
-1. **Target check** — confirm the skill the override names is actually installed (its directory with a `customize.toml` exists under the tool's skills path or `_bmad/bmm/`). A template whose target is missing is reported and skipped, never written blind.
-2. **Write or merge** — if `_bmad/custom/<name>.toml` does not exist, copy the template. If it exists, do NOT clobber: diff the existing file against the template, show the operator what storm wants to add or change, and merge only with approval — preserving any non-storm customizations the operator has authored. Storm-owned blocks are delimited so future runs can update them surgically.
-3. **Verify the merge** — run the resolver and confirm the storm fields landed:
+- `bmad-agent-dev.toml`
+- `bmad-agent-pm.toml`
+- `bmad-build.toml` — the only active direct-Build compatibility override; it contains one unconditional wrapper-boundary fact
+- `bmad-sprint-planning.toml`
+- `bmad-retrospective.toml`
+- `bmad-code-review.toml`
+- `bmad-correct-course.toml`
+
+The deprecated consumer overrides `bmad-create-story.toml`, `bmad-dev-story.toml`, and `bmad-quick-dev.toml` are migration blockers, not templates. Before installing or checking the inventory:
+
+1. Look for each legacy file under `{project-root}/_bmad/custom/`. If one exists, report it as a blocker and propose that the operator manually merge its intentional customization into `bmad-build.toml`. Never auto-delete, auto-merge, or silently reinterpret a legacy file. Do not install a second Storm hook for a deprecated upstream shim.
+2. For every template in the inventory above, confirm the skill or agent it names is actually installed (its directory with a `customize.toml` exists under the tool's skills path or `_bmad/bmm/`). A missing `bmad-build`, `bmad-sprint-planning`, or `bmad-retrospective` target is a hard failure: stop setup/check and report the missing required BMM capability. Other missing targets may be reported and skipped, never written blind.
+
+3. **Check upstream scalar collisions before writing** — read the shipped `customize.toml` for the target. If upstream already supplies a non-empty scalar that Storm would override, especially `workflow.on_complete`, stop and require explicit composition of the two behaviors. Never silently replace a non-empty upstream scalar. This is a hard stop for that install/check operation, not a warning to ignore.
+4. **Write or merge** — if `_bmad/custom/<name>.toml` does not exist, copy the template. If it exists, do NOT clobber: diff the existing file against the template, show the operator what storm wants to add or change, and merge only with approval — preserving any non-storm customizations the operator has authored. Storm-owned blocks are delimited so future runs can update them surgically. Legacy files from step 1 are excluded from this merge path.
+5. **Verify customization resolution** — run the resolver and confirm the storm fields landed:
 
    ```bash
    uv run {project-root}/_bmad/scripts/resolve_customization.py \
      --skill <installed-skill-dir> --key workflow   # or `agent` for agent overrides
    ```
 
-   (Fall back to `python3` if `uv` is unavailable.) The resolved JSON must contain the storm entries (the appended activation steps / persistent facts, the `on_complete` text). A field that didn't land is a hard finding — report it, don't proceed silently.
+   (Fall back to `python3` if `uv` is unavailable.) The resolved JSON must contain the storm entries (the appended activation steps / persistent facts and, where used, the `on_complete` text). A field that didn't land is a hard finding — report it, don't proceed silently.
 
-4. Never write into `_bmad/core/`, `_bmad/bmm/`, or any installed skill folder. Overrides go in `_bmad/custom/` only.
+6. **Verify the direct-Build boundary, not an invented rendered route contract** — confirm the resolved `bmad-build` customization contains only the unconditional fact that direct Build and upstream create-story/dev-story/quick-dev shims are unwrapped, and that the installed `storm-build` skill advertises exactly `author`, `implement`, and `validate`. Do not claim that rendered `bmad-build` exposes route-specific gates, selected-route callbacks, or phase metadata. Report a hard validation failure if a route-specific Build hook, `on_complete`, inferred route capture, or duplicate Storm lifecycle is present.
+
+7. Never write into `_bmad/core/`, `_bmad/bmm/`, or any installed skill folder. Overrides go in `_bmad/custom/` only.
+
+8. If the consuming project uses the native OpenCode route, also run the
+   project-local OpenCode asset manager described below. Its source/module path
+   is `{project-root}/_bmad/storm/skills/storm-setup/assets/opencode/`, and its
+   manager is
+   `{project-root}/_bmad/storm/skills/storm-setup/assets/opencode/scripts/manage_opencode_assets.py`.
 
 Finish with a summary: overrides written, merged, skipped (and why), and verification results. Then remind the operator to confirm `grill_on_implement` and both cross-model rosters in `_bmad/storm/config.yaml`: `polytoken_review_models` supplies fully qualified model references only when running under Polytoken, while `external_reviewers` supplies CLI command names only outside Polytoken. Polytoken does not fall back to the CLI roster.
 
 ## Check mode (`storm-setup check`)
 
-Run after every BMAD update. Mutates nothing; reports three classes of problems:
+Run after every BMAD update. Mutates nothing; reports four classes of problems:
 
 1. **Orphaned overrides** — a `_bmad/custom/*.toml` written by storm whose target skill no longer exists or was renamed upstream. Overrides fail *quiet*, so this is the check that catches upstream renames.
 2. **Landing failures** — for each override, re-run the resolver verification from install mode; report any storm field that no longer resolves.
-3. **Default collisions** — for each hooked workflow, read the shipped `customize.toml`; if upstream now ships a non-empty default for a scalar storm overrides (especially `on_complete`), flag it: our override is silently replacing behavior upstream considers standard, and the operator must reconcile the two.
+3. **Default collisions** — for each hooked workflow, read the shipped `customize.toml`; if upstream now ships a non-empty default for a scalar Storm overrides (especially `on_complete`), stop and require composition. The check must not bless a silent replacement.
 
-Also compare the templates in `assets/overrides/` against the written files and flag drift in the storm-owned blocks (someone edited the wiring by hand instead of the template).
+4. **Legacy migration blockers and inventory drift** — flag consumer `bmad-create-story.toml`, `bmad-dev-story.toml`, and `bmad-quick-dev.toml` overrides, propose a manual merge into `bmad-build`, and never delete or merge them automatically. Compare the exact seven-template inventory above against the module and written files; legacy template files are an error, not an expected compatibility hook.
+
+Also compare the templates in `assets/overrides/` against the written files and flag drift in the storm-owned blocks (someone edited the wiring by hand instead of the template). Re-run the direct-Build boundary and `storm-build` explicit-mode validation from install mode; resolver success alone is insufficient, and no renderer-internal route/gate claim is valid.
+
+For a consuming project using OpenCode, also run the OpenCode manager's
+read-only `check` procedure described below. Report asset drift and apply
+repairs only with operator approval.
 
 Report findings with proposed fixes; apply only what the operator approves.
+
+## Native OpenCode asset projection
+
+The OpenCode module source path is
+`{module-root}/skills/storm-setup/assets/opencode/` and, after installation,
+`{project-root}/_bmad/storm/skills/storm-setup/assets/opencode/` in the consuming
+project. The project-local manager is
+`{project-root}/_bmad/storm/skills/storm-setup/assets/opencode/scripts/manage_opencode_assets.py`.
+It exposes exactly two procedures. Run these from `{project-root}` when the
+native OpenCode route is in use:
+
+```bash
+MGR={project-root}/_bmad/storm/skills/storm-setup/assets/opencode/scripts/manage_opencode_assets.py
+
+python3 "$MGR" install --project-root .
+python3 "$MGR" check   --project-root .
+```
+
+`install` creates and `check` validates the exact project-local Storm skill links
+shipped by the module under `.opencode/skills/storm-*`, plus one marked Storm
+orchestrator append block in
+`.opencode/oh-my-opencode-slim/orchestrator_append.md`. The manager preserves
+unmarked operator append text. It refuses collisions and modified or malformed Storm blocks,
+as well as unsafe symlinked containers, rather than overwriting them. A later
+policy update that changes the shipped append requires explicit manual operator
+review instead of automatic replacement.
+
+The manager does not install, vendor, or configure OMO-Slim, OpenCode
+providers/presets/hook runtime, or Linear credentials. After `install`, restart
+OpenCode or run its native reload command (`/reload` where supported); `check` is
+read-only and needs no reload.
 
 ## Polytoken asset projection
 

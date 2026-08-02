@@ -5,7 +5,7 @@ description: Three-way consistency audit of epics.md vs Linear vs sprint-status.
 
 # Storm Reconcile — tracker drift audit
 
-Drift between the scope file, the tracker, and the sprint file is handled here mechanically, not by discipline. This skill **reports and proposes; it mutates nothing without operator approval.**
+Drift between the scope file, the tracker, and the sprint file is handled here mechanically, not by discipline. This skill **reports and proposes; it mutates nothing without operator approval.** It never directly edits `sprint-status.yaml`. It never invokes `bmad-sprint-planning` directly; it reports and hands off the required planner repair intent to the operator. Approved Linear changes go through `storm-linear`.
 
 ## Load
 
@@ -38,4 +38,10 @@ A story whose phase cannot be determined (e.g. issue exists with a spec but spri
 
 Write `{implementation_artifacts}/storm-reviews/reconcile-<date>.md`: one section per check, each finding with the evidence from both sides and a **proposed fix** stating which system gets written and under which rule of the contract. Summarize counts up front; "no drift" is a valid, explicit result.
 
-Then present the proposals. Apply only the fixes the operator approves, via `storm-linear` operations and minimal YAML edits, and append an "applied" section to the report. Findings the operator declines are recorded with the reason so the next audit doesn't re-litigate them.
+Then present the proposals. Apply only the fixes the operator approves: use
+`storm-linear` operations for Linear writes and hand the required
+`bmad-sprint-planning` repair intent to the operator for local projection
+repairs. This skill never invokes the planner and never edits
+`sprint-status.yaml` directly. Append an "applied" section to the report.
+Findings the operator declines are recorded with the reason so the next audit
+doesn't re-litigate them.

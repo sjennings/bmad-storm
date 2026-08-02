@@ -1,8 +1,8 @@
 {
-  "contract_version": "1.0.0",
+  "contract_version": "2.0.0",
   "module": "storm",
   "name": "storm-canonical-workflow",
-  "summary": "Machine-readable canonical Storm development workflow: BMAD owns pre-publication scope, Linear owns post-publication execution, and Polytoken execution follows plan -> reviewed handoff_plan -> active saved goal -> execute -> read_goal -> storm-linear open -> mutation. Aliases delegate to canonical operations and never reimplement state transitions.",
+  "summary": "Machine-readable BMAD-METHOD v7 Storm workflow contract: storm-build is the explicit Storm lifecycle wrapper around unwrapped upstream bmad-build; legacy story names warn and forward directly to upstream Build without Storm lifecycle hooks; bmad-sprint-planning owns readiness, status, validation, repair, and every sprint-status projection write; and Polytoken implementation follows plan -> reviewed handoff_plan -> active saved goal -> execute -> read_goal -> storm-linear open -> mutation.",
   "enforcement": {
     "level": "directive",
     "statement": "This contract is enforced at the directive/prompt and permission-classifier level plus the deterministic validators listed below. Polytoken does not provide a physical sandbox that makes plan-facet mutation impossible; the shipped plan facet exposes shell_exec, so its read-only posture is prompt- and permission-enforced. Deterministic validators prove contract conformance of transcripts and assets; only disposable Polytoken smoke sessions prove live tool behavior. Documentation and diagnostics must state this limitation explicitly and must never claim a physical sandbox.",
@@ -12,6 +12,7 @@
       "tests/test_scheduler.py"
     ],
     "smoke_scenarios": [
+      "smoke_storm_build_wrapper_boundary",
       "smoke_plan_handoff_goal_open_gate",
       "smoke_role_tool_contracts"
     ]
@@ -20,7 +21,7 @@
     "pre_publication": {
       "owner": "bmad",
       "artifacts": ["epics.md", "sprint-status.yaml", "story file"],
-      "rule": "BMAD planning artifacts own scope and pre-publication status. The Linear issue, if it exists yet, is not authoritative."
+      "rule": "BMAD planning artifacts own scope and pre-publication status; bmad-sprint-planning owns readiness and the sprint-status projection writes. The Linear issue, if it exists yet, is not authoritative."
     },
     "post_publication": {
       "owner": "linear",
@@ -28,13 +29,47 @@
       "rule": "Linear owns implementation context and execution state from In Progress to Done. Local authoring files are evidence/history, not competing authority."
     },
     "handoff_point": "storm-linear.publish",
+    "sprint_planning": {
+      "owner": "bmad-sprint-planning",
+      "responsibilities": ["readiness", "status", "validate", "repair", "legacy-compatible sprint plan/status output", "all sprint-status.yaml projection writes"],
+      "rule": "These are internal intents of bmad-sprint-planning, not separate active Storm workflows. Upstream's deterministic script parses and writes the projection; inference is fallback-only and must warn."
+    },
     "phase_decides_rule": "Pre-publication, sprint-status.yaml wins; post-publication, Linear wins; on disagreement the phase decides. If the phase cannot be determined, stop and ask rather than overwrite."
   },
   "artifact_lifecycle": {
     "before_publication": "epics.md, sprint-status.yaml, and the BMAD story file own scope/context.",
-    "at_publication": "storm-linear publish writes the story-key-anchored spec to the Linear issue, sets Todo + ready-for-agent, then updates the sprint entry to ready-for-dev only after successful publication.",
+    "at_publication": "storm-linear publish writes the story-key-anchored spec to the Linear issue at Todo + ready-for-agent and returns to storm-build. storm-build performs exactly one adaptive planner call afterward; the Linear write and planner projection are separate operations.",
     "after_publication": "Linear owns implementation context/state; local authoring files are evidence/history, not competing authority.",
     "parallel_authority": "forbidden"
+  },
+  "route_selection": {
+    "canonical_workflow": "storm-build",
+    "upstream_workflow": "bmad-build",
+    "upstream_workflow_wrapped": false,
+    "syntax": ["storm-build author <story-key>", "storm-build implement <story-key-or-issue>", "storm-build validate <scope>"],
+    "allowed_modes": ["author", "implement", "validate"],
+    "mode_routes": {"author": "authoring", "implement": "implementation", "validate": "validation/review"},
+    "capture_before_side_effects": true,
+    "retention": "The selected route is captured once before any Storm side effect and retained through completion; completion never rereads mutable sprint state to choose behavior.",
+    "ambiguous_or_generic": "Fail closed for Storm publish/open/close and sprint projection side effects.",
+    "validation_review_tracker_effects": [],
+    "planner_call_owner": "storm-build",
+    "planner_call_cardinality": {"author": 1, "story_implementation": 1, "child_implementation": 0, "validation_review": 0},
+    "planner_call_procedure": "Inspect the installed bmad-sprint-planning usage/help; pass --autonomous only if advertised, otherwise invoke its advertised native headless intent or JSON script subcommand. Inspect the result and do not retry guessed forms."
+  },
+  "partial_outcomes": {
+    "publication_success_planning_failure": {
+      "completed": "Linear publication",
+      "result": "published but blocked before implementation",
+      "repair_owner": "bmad-sprint-planning",
+      "atomic": false
+    },
+    "linear_done_planning_failure": {
+      "completed": "Linear Done",
+      "result": "Linear Done with sprint reconciliation repair required",
+      "repair_owner": "bmad-sprint-planning",
+      "atomic": false
+    }
   },
   "execution_chain": [
     "plan_facet",
@@ -67,33 +102,40 @@
   "operations": {
     "bmad-create-epics-and-stories": {"kind": "canonical", "phase": "scope", "authority": "bmad", "effects": ["epics.md scope"]},
     "bmad-correct-course": {"kind": "canonical", "phase": "scope", "authority": "bmad", "effects": ["epics.md scope", "storm-linear.mirror"]},
-    "bmad-sprint-planning": {"kind": "canonical", "phase": "scope", "authority": "bmad", "effects": ["sprint-status.yaml"]},
-    "bmad-create-story": {"kind": "canonical", "phase": "authoring", "authority": "bmad", "effects": ["story file", "storm-grilling.full", "storm-linear.publish"]},
-    "storm-grilling": {"kind": "canonical", "phase": "authoring", "authority": "bmad", "effects": ["shared understanding", "glossary/ADR updates"]},
+    "storm-build": {"kind": "canonical", "phase": "build", "authority": "storm", "modes": ["author", "implement", "validate"], "syntax": ["storm-build author <story-key>", "storm-build implement <story-key-or-issue>", "storm-build validate <scope>"], "owns": ["explicit route selection", "Storm lifecycle", "adaptive planner call"], "authoring_preconditions": ["full_grill", "seam_payload_captured", "artifact_seams_verified"], "unknown_or_missing_mode": "hard stop with zero Storm tracker or sprint side effects", "planner_call_cardinality": {"author": 1, "story_target_implementation": 1, "child_target_implementation": 0, "validate": 0}},
+    "bmad-build": {"kind": "upstream-canonical", "phase": "build", "authority": "upstream", "storm_wrapped": false, "effects": ["upstream Build work"], "side_effect_rule": "Direct callers receive no Storm tracker lifecycle hooks; use storm-build for an explicit Storm-managed lifecycle."},
+    "bmad-sprint-planning": {"kind": "canonical", "phase": "scope", "authority": "bmad-sprint-planning", "intents": ["readiness", "status", "validate", "repair"], "effects": ["sprint-status.yaml", "legacy-compatible sprint plan/status output"], "implementation": "upstream deterministic script", "inference": "fallback-only with warning", "writes_sprint_status": true, "headless_capability": "use only the installed skill's advertised flag, native intent, or script subcommand"},
+    "bmad-create-story": {"kind": "deprecation-shim", "phase": "build", "authority": "upstream", "warning": true, "routes_to": "bmad-build", "storm_lifecycle": false, "route": "upstream authoring", "effects": ["warning", "forward original input"]},
+    "bmad-dev-story": {"kind": "deprecation-shim", "phase": "build", "authority": "upstream", "warning": true, "routes_to": "bmad-build", "storm_lifecycle": false, "route": "upstream implementation", "effects": ["warning", "forward original input"]},
+    "bmad-quick-dev": {"kind": "deprecation-shim", "phase": "build", "authority": "upstream", "warning": true, "routes_to": "bmad-build", "storm_lifecycle": false, "route": "upstream intent resolution", "effects": ["warning", "forward original input"], "ambiguous_rule": "No Storm side effect; direct upstream forwarding remains unwrapped."},
+    "bmad-sprint-status": {"kind": "deprecation-shim", "phase": "scope", "authority": "upstream", "warning": true, "routes_to": "bmad-sprint-planning", "route": "status", "effects": ["warning", "forward original input"], "storm_lifecycle": false},
+    "bmad-check-implementation-readiness": {"kind": "compatibility-shim", "phase": "scope", "authority": "upstream", "status": "retired", "warning": true, "routes_to": "bmad-sprint-planning", "route": "readiness", "effects": ["warning", "forward original input"], "storm_lifecycle": false},
+    "storm-grilling": {"kind": "canonical", "phase": "authoring", "authority": "bmad", "effects": ["shared understanding", "glossary/ADR updates"], "handoff": "return the agreed Seams & test points as an explicit payload to the calling wrapper; do not write a story/spec artifact"},
     "storm-spec-review": {"kind": "canonical", "phase": "authoring", "authority": "bmad", "effects": ["pre-publication review packet"], "required": false},
-    "storm-linear.publish": {"kind": "canonical", "phase": "publication", "authority": "handoff", "preconditions": ["grill_confirmed"], "effects": ["Linear spec", "Todo", "ready-for-agent", "sprint ready-for-dev"]},
+    "storm-linear.publish": {"kind": "canonical", "phase": "publication", "authority": "handoff", "preconditions": ["storm_build_author_route", "grill_confirmed"], "effects": ["Linear spec", "Todo", "ready-for-agent"], "caller_responsibility": "return to storm-build for exactly one adaptive planner call", "writes_sprint_status": false, "invokes_planner": false},
     "storm-linear.slice": {"kind": "canonical", "phase": "publication", "authority": "linear", "preconditions": ["publish_succeeded"], "effects": ["child tickets", "blocking edges"], "invocation": "operator-only"},
     "storm-linear.mirror": {"kind": "canonical", "phase": "scope", "authority": "bmad", "effects": ["Linear issue mirror of BMAD scope"]},
     "storm-linear.intake": {"kind": "canonical", "phase": "scope", "authority": "linear", "effects": ["project-less needs-triage issue"]},
-    "bmad-dev-story": {"kind": "canonical", "phase": "implementation", "authority": "linear", "preconditions": ["execution_chain"], "effects": ["implementation mutations", "tests"]},
     "storm-linear.open": {"kind": "canonical", "phase": "implementation", "authority": "linear", "preconditions": ["goal_activated", "execute_facet", "read_goal_verified"], "effects": ["issue In Progress"]},
     "storm-tdd": {"kind": "canonical", "phase": "implementation", "authority": "linear", "effects": ["test-first at confirmed seams"]},
-    "bmad-code-review": {"kind": "canonical", "phase": "review", "authority": "linear", "effects": ["native adversarial review"]},
+    "bmad-code-review": {"kind": "canonical", "phase": "review", "authority": "upstream", "standalone": true, "preferred_entry": "storm-build validate", "effects": ["native adversarial review"]},
     "storm-cross-review": {"kind": "canonical", "phase": "review", "authority": "linear", "effects": ["cross-model panel triage"], "round_cap_setting": "review_loop_max_rounds"},
-    "storm-linear.close": {"kind": "canonical", "phase": "close", "authority": "linear", "preconditions": ["review_clean", "completion_commented", "completion_commit_policy"], "effects": ["completion record", "Done", "story-only sprint reconcile"]},
-    "storm-reconcile": {"kind": "canonical", "phase": "hygiene", "authority": "phase-decides", "effects": ["drift report", "approved fixes only"]},
+    "storm-linear.close": {"kind": "canonical", "phase": "close", "authority": "linear", "preconditions": ["review_clean", "completion_commented", "completion_commit_policy"], "effects": ["completion record", "Done"], "caller_responsibility": "storm-build decides whether to perform exactly one planner reconciliation call", "writes_sprint_status": false, "invokes_planner": false},
+    "storm-reconcile": {"kind": "canonical", "phase": "hygiene", "authority": "phase-decides", "effects": ["drift report", "approved fixes only"], "requests": ["operator handoff: bmad-sprint-planning repair intent"], "writes_sprint_status": false, "invokes_planner": false},
+    "bmad-retrospective": {"kind": "advisory", "phase": "hygiene", "authority": "operator", "effects": ["sourced findings", "aggregate refactor proposals"], "writes": [], "follow_up": ["bmad-correct-course", "storm-harness-improvement"]},
     "storm-harness-improvement": {"kind": "canonical", "phase": "hygiene", "authority": "operator", "effects": ["harness change proposals"]}
   },
   "aliases": {
     "/create-story": {
       "status": "alias",
-      "canonical_operations": ["bmad-create-story"],
-      "rule": "Delegates to bmad-create-story with storm overrides (grilling + publish hook); it never resolves, drafts, or publishes independently."
+      "canonical_operations": ["storm-build"],
+      "route": "authoring",
+      "rule": "Delegates to storm-build author with an explicit story key; it never delegates to direct bmad-build and never creates a second lifecycle."
     },
     "/to-spec": {
-      "status": "alias",
-      "canonical_operations": ["storm-linear.publish"],
-      "rule": "Thin adapter to the publication operation inside bmad-create-story on_complete; it never publishes outside that handoff."
+      "status": "retired",
+      "canonical_operations": [],
+      "rule": "Retired because it could bypass storm-build author's seam verification and one planner readiness call. Use storm-build author with an explicit story key."
     },
     "/to-tickets": {
       "status": "alias",
@@ -102,8 +144,15 @@
     },
     "/implement": {
       "status": "alias",
-      "canonical_operations": ["bmad-dev-story", "storm-tdd", "storm-linear.open", "storm-linear.close"],
-      "rule": "Delegates to bmad-dev-story; under Polytoken it always follows plan -> reviewed handoff_plan -> active goal -> execute -> read_goal -> storm-linear open -> mutation. It never opens, commits, or closes independently."
+      "canonical_operations": ["storm-build"],
+      "route": "implementation",
+      "rule": "Delegates to storm-build implement with an explicit target. It never delegates to direct bmad-build, opens, commits, or closes independently, and does not bypass the Polytoken gates."
+    },
+    "/quick-dev": {
+      "status": "alias",
+      "canonical_operations": ["bmad-build"],
+      "route": "intent resolution",
+      "rule": "Warns as a historical alias, then forwards the original input directly to upstream bmad-build. It is intentionally unwrapped by Storm and has no Storm lifecycle side effects."
     },
     "/tdd": {
       "status": "alias",
@@ -128,7 +177,7 @@
     "story-plan": {
       "status": "retired",
       "canonical_operations": [],
-      "rule": "Retired; replaced by bmad-create-story with storm overrides. Must not be advertised as active."
+      "rule": "Retired; replaced by storm-build with explicit route selection. Must not be advertised as active."
     }
   },
   "states": {
@@ -136,10 +185,10 @@
     "terminal": ["reconciled", "child_done", "halted_pre_open", "halted_in_progress"],
     "definitions": {
       "scoped": "Story exists in epics.md and sprint-status.yaml backlog; BMAD authority.",
-      "authoring": "bmad-create-story active; story resolution and context loading done.",
+      "authoring": "storm-build author route active; story resolution and context loading done before invoking upstream bmad-build.",
       "authored": "Grilling confirmed shared understanding; story file drafted; optional spec review done or declined.",
       "published": "storm-linear publish succeeded; issue carries the story-key-anchored spec at Todo + ready-for-agent.",
-      "ready_for_dev": "sprint-status.yaml entry moved to ready-for-dev after successful publication.",
+      "ready_for_dev": "bmad-sprint-planning projection moved the entry to ready-for-dev after successful publication.",
       "planning": "Polytoken plan facet; implementation plan recorded with write_plan. Issue remains Todo.",
       "plan_reviewed": "Plan review discipline complete; ready for handoff_plan.",
       "goal_activated": "handoff_plan approved; saved-session goal active; execute facet entered.",
@@ -147,7 +196,7 @@
       "goal_verified": "read_goal confirms the implementation goal is active.",
       "open": "storm-linear open moved the issue (or child ticket) to In Progress.",
       "implementing": "Open verified; implementation mutation, TDD seams, and red/green evidence permitted.",
-      "native_reviewed": "bmad-code-review native adversarial layers passed.",
+      "native_reviewed": "The Build/native review route passed.",
       "review_clean": "storm-cross-review panel passed; findings dispositioned.",
       "close_ready": "Completion record commented on the issue before any state change.",
       "done": "Story issue moved to Done.",
@@ -162,7 +211,8 @@
     {"event": "grill_confirmed", "from": ["authoring"], "to": "authored"},
     {"event": "spec_review_completed", "from": ["authored"], "to": "authored"},
     {"event": "publish_succeeded", "from": ["authored"], "to": "published"},
-    {"event": "publish_failed", "from": ["authored"], "to": "authored", "note": "Atomic publish failure: sprint-status.yaml is untouched and the failure is reported with exactly what should have been written."},
+    {"event": "publish_failed", "from": ["authored"], "to": "authored", "note": "Publication failure leaves the local projection untouched; report the failure with exactly what should have been written."},
+    {"event": "planner_readiness_failed", "from": ["published"], "to": "published", "note": "Linear publication succeeded but the one storm-build planner call failed; the issue is published but blocked before implementation and requires sprint-planning repair."},
     {"event": "sprint_ready_updated", "from": ["published"], "to": "ready_for_dev"},
     {"event": "slice_completed", "from": ["published", "ready_for_dev"], "to": "self", "note": "Operator-invoked only. Self-transition: slicing never advances state and never substitutes for sprint_ready_updated — slicing from published still requires sprint_ready_updated before planning may begin."},
     {"event": "plan_created", "from": ["ready_for_dev", "halted_pre_open"], "to": "planning"},
@@ -188,6 +238,7 @@
     {"event": "completion_commented", "from": ["review_clean"], "to": "close_ready", "guard": "close_policy", "note": "Completion record (what shipped, verification actually run, declined findings with reasons, deferred follow-ups) is commented BEFORE any state change."},
     {"event": "issue_closed", "from": ["close_ready"], "to": "done", "guard": "story_target"},
     {"event": "child_closed", "from": ["close_ready"], "to": "child_done", "guard": "child_target"},
+    {"event": "planner_reconciliation_failed", "from": ["done"], "to": "done", "note": "Linear remains Done; the one storm-build planner reconciliation call failed and repair is required."},
     {"event": "sprint_reconciled", "from": ["done"], "to": "reconciled", "note": "Story close only. Unreachable from child_done: a child-ticket close reconciles nothing."},
     {"event": "child_roll_up_reported", "from": ["child_done"], "to": "child_done", "note": "The last child's session reports the story as ready to close rather than closing the parent."}
   ],
@@ -210,6 +261,10 @@
     "roll_up": "The last open child's session reports the story as ready to close; the parent story is closed only by its own session."
   },
   "halt_conditions": [
+    "unknown or missing storm-build mode stops with zero Storm tracker or sprint side effects",
+    "Linear publication success followed by planner_readiness_failed leaves the work published but blocked before implementation",
+    "a child-ticket close never invokes planner reconciliation or changes the parent",
+    "Linear Done followed by planner_reconciliation_failed remains Linear Done and requires bmad-sprint-planning repair",
     "rejected or cancelled handoff_plan leaves the issue Todo with no implementation mutation",
     "absent active saved goal after handoff blocks storm-linear open",
     "failed or unverified open blocks implementation mutation",

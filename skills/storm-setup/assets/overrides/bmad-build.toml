@@ -1,0 +1,12 @@
+# storm override — direct BMAD Build compatibility boundary. Sparse: one fact only.
+# Written by storm-setup; edit the template in the module repo, then re-run storm-setup.
+#
+# Current upstream bmad-build has no supported route/phase callback. Its
+# activation steps run before route selection and on_complete runs after the
+# workflow, so Storm intentionally does not try to infer or hook a lifecycle here.
+
+[workflow]
+
+persistent_facts = [
+  "`bmad-build` is the upstream canonical workflow, but direct bmad-build calls and the upstream bmad-create-story, bmad-dev-story, and bmad-quick-dev deprecation shims are intentionally unwrapped by Storm. Direct callers receive no Storm tracker or sprint lifecycle side effects. Use `storm-build author <story-key>`, `storm-build implement <story-key-or-issue>`, or `storm-build validate <scope>` when the explicit Storm-managed lifecycle is required.",
+]

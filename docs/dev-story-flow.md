@@ -1,88 +1,278 @@
-# The Dev Story Flow
+# The BMAD v7 Build and Storm Wrapper Flow
 
-How a story moves from scoped backlog entry to `Done` under BMAD + storm, and where each retired mattpocock skill's job now lives. This is the operator's map; the enforcing contracts live in the skills and overrides themselves.
+Upstream `bmad-build` is canonical for current BMAD work. Its authoring,
+implementation, and validation/review routes remain upstream-owned. The
+upstream activation runs before its own route selection, exposes no stable
+selected-route metadata, and reaches `on_complete` only after workflow work has
+finished. Storm therefore cannot safely attach its phase lifecycle to direct
+Build callbacks.
+
+`bmad-create-story`, `bmad-dev-story`, and `bmad-quick-dev` are upstream
+deprecation shims. They warn and forward their original input directly to
+`bmad-build`. Direct Build and shim calls are intentionally **unwrapped** by
+Storm: they do not automatically publish, open, or close Linear work and do not
+reconcile sprint status.
+
+When those lifecycle effects are wanted, use the explicit Storm wrapper:
+
+```text
+storm-build author <story-key>
+storm-build implement <story-key-or-issue>
+storm-build validate <scope>
+```
+
+The wrapper owns the explicit route and invokes the upstream Build work inside a
+safe pre/post boundary. It is not a replacement for upstream Build; it is the
+Storm-managed lifecycle around it.
 
 ## The flow at a glance
 
 ```mermaid
 flowchart TD
-    subgraph P0 ["Phase 0 — Scope (BMAD authority)"]
-        A["epics.md story<br/>(bmad-create-epics-and-stories /<br/>bmad-correct-course)"] --> B["sprint-status.yaml: backlog<br/>(bmad-sprint-planning)"]
+    subgraph P0 ["Scope and sprint planning"]
+        A["epics.md story\n(bmad-create-epics-and-stories /\nbmad-correct-course)"] --> B["bmad-sprint-planning\ninternal readiness/status intent\nlocal sprint-status.yaml"]
     end
-    subgraph P1 ["Phase 1 — Authoring (bmad-create-story)"]
-        B --> C["storm-grilling (full)<br/>interview to shared understanding"]
-        C --> D["BMM drafts story file<br/>(tasks, ACs, dev notes)"]
-        D --> E["storm-spec-review (offered)<br/>lenses + external models"]
-        E --> F["storm-linear publish<br/>spec → Linear issue (Todo)<br/>sprint: ready-for-dev"]
+    subgraph P1 ["storm-build author <story-key>"]
+        B --> C["storm-grilling (full)\nbefore upstream Build"]
+        C --> D["Build authoring request\nwith Seams & test points input"]
+        D --> E["bmad-build produces\nstory/spec artifact"]
+        E --> F["wrapper verifies seams\nstop if missing"]
+        F --> G["optional storm-spec-review\nthen storm-linear publish"]
+        G --> H["exactly one planner\nreadiness call"]
     end
-    F -.->|"large story (operator call)"| G["storm-linear slice<br/>child tickets + blocking edges"]
-    subgraph P2 ["Phase 2 — Implementation (bmad-dev-story), Linear authority"]
-        F --> H["Polytoken: plan facet<br/>inspect Todo issue + spec<br/>(other hosts: open In Progress)"]
-        G --> H
-        H --> I["storm-grilling (gaps-only gate)<br/>pre-flight confirmation"]
-        I -->|"Polytoken"| X["approved handoff_plan<br/>saved goal + execute facet<br/>then issue → In Progress"]
-        I -->|"other hosts"| J
-        X --> J["BMM dev-story implements<br/>tasks + tests, HALT rules"]
-        J --> K["bmad-code-review<br/>native adversarial layers"]
-        K --> L["storm-cross-review<br/>external models, merge, loop until clean"]
-        L -->|"findings"| J
-        L -->|"clean"| M["storm-linear close<br/>completion record → Done<br/>sprint: done (story close only)"]
+    G -.-> I["published but blocked if\nplanner readiness fails"]
+    subgraph P2 ["storm-build implement <target>"]
+        H --> J["Polytoken plan facet\ninspect without opening"]
+        J --> K["storm-grilling\ngaps-only gate"]
+        K --> L["reviewed handoff_plan\ngoal → execute"]
+        L --> M["read_goal → storm-linear open\nverify In Progress"]
+        M --> N["storm-tdd + Build implementation\nred/green evidence"]
+        N --> O["review + storm-cross-review\nfix and fresh-pass loop"]
+        O --> P["storm-linear close\ncompletion record → Done"]
+        P --> Q["one planner reconciliation\nstory only; never child"]
     end
-    M --> N["storm-reconcile (periodic)<br/>three-way drift audit"]
+    P -.-> R["Linear Done remains if\nplanner repair fails"]
+    subgraph P3 ["storm-build validate <scope>"]
+        Q["bmad-build validation/review\noptional storm-cross-review"] --> R["findings and evidence\nno tracker or sprint effects"]
+    end
+    subgraph P4 ["Direct bmad-build or deprecated shim"]
+        S["upstream call"] --> T["unwrapped by Storm\nno publish/open/close/reconcile"]
+    end
 ```
 
-## Phase 0 — Scope (unchanged from before)
+## Scope and sprint-planning ownership
 
-Epic and story scope is created and rescoped **only** through BMAD planning: `bmad-create-epics-and-stories` for decomposition, `bmad-correct-course` for every mid-sprint change including new bugs, `bmad-sprint-planning` for `sprint-status.yaml`. Unsolicited work (a found bug, ticket-shaped ideas) enters via `storm-linear intake` — a project-less `needs-triage` issue — and becomes real work only when correct-course gives it a story. Correct-course's `on_complete` now mirrors every scope change to Linear automatically (`storm-linear mirror`), which used to be hand-reconciled.
+BMAD planning owns scope: `bmad-create-epics-and-stories` decomposes work and
+`bmad-correct-course` handles changes, including newly discovered bugs. Intake
+can record unsolicited work as a project-less `needs-triage` issue, but it does
+not make that issue ready for implementation.
 
-**Authority: `sprint-status.yaml` and `epics.md`.** The Linear issue, if it exists yet, is not authoritative.
+`bmad-sprint-planning` is the single native owner of readiness, the sprint status
+view, validation, repair, and every local `sprint-status.yaml` projection. Status
+and implementation readiness are **internal planning intents**, not separate
+active Storm workflows:
 
-## Phase 1 — Authoring: `bmad-create-story [story]`
+- a request such as “what's the status” uses the status intent inside
+  `bmad-sprint-planning`;
+- retired `bmad-sprint-status` and `check-implementation-readiness` compatibility
+  calls forward to the corresponding planner intent; and
+- `storm-status` may project native `/jobs` and `/todo` operational state, but it
+  is not the sprint-status owner.
 
-One workflow now does what `/create-story` → grilling → `/to-spec` → publication did across three skills and a custom bridge:
+Planning is deterministic. If deterministic inputs are unavailable, inference
+is a warning-only fallback, and the warning identifies that inference was used.
+Legacy `sprint-plan`/status compatibility is preserved; Storm does not invent a
+replacement output schema.
 
-1. **Activation** (storm overrides): the tracker contract loads as persistent facts; the workflow resolves the target story from `sprint-status.yaml`/`epics.md` and loads project context.
-2. **Grilling** (`activation_steps_append`): `storm-grilling` in `full` mode — scope restated in glossary vocabulary, one-question-at-a-time interview, glossary/ADR capture inline. No drafting until the operator confirms shared understanding; a too-big/too-foggy story gets kicked back toward correct-course.
-3. **Drafting** (BMM native): the story file with tasks/subtasks, ACs, and dev notes — this artifact is richer than the old flow's spec-only output; it's what dev-story executes against.
-4. **`on_complete`** (storm): offer `storm-spec-review` (lens panel + external-model reviewers on a self-contained packet; accepted findings folded in *before* publication) → `storm-linear publish` (spec to the story's Linear issue, story-key anchor, `Todo`, `ready-for-agent`) → sprint entry to `ready-for-dev`.
+Headless use follows the installed planner's documented native headless intent
+and JSON interface. Use the installed skill's documentation/help to determine
+the actual invocation. Use `--autonomous` only when that installed planner
+explicitly advertises the flag; Storm does not claim that the current script
+universally accepts it. If it is not advertised, use the native headless intent,
+including natural language such as “run sprint planning headless.”
 
-**The publish is still the single handoff point.** Before it, the YAML wins; after it, Linear wins.
+The phase authority remains straightforward: before publication, BMAD planning
+artifacts (`epics.md`, the story file, and `sprint-status.yaml`) win; after
+publication, the Linear issue carrying the published specification owns
+implementation state. If the phase cannot be determined, stop and ask rather
+than overwrite.
 
-### Phase 1.5 — Slicing (optional, operator-invoked)
+## Why `storm-build` owns the lifecycle
 
-For a story too big for one implementation session: `storm-linear slice <story-key>` creates child tickets under the story issue in dependency order with native blocking relations. **This is a deliberate manual step** — unlike the rest of the old `/to-tickets` behavior it is not hooked into any workflow; the operator calls it after publication when grilling revealed the story's true size. Implementors then work the frontier (tickets with no open blockers), per the contract.
+Storm cannot use direct `bmad-build` customization as a reliable phase hook:
 
-## Phase 2 — Implementation: `bmad-dev-story`
+1. Build customization activation occurs before Build selects authoring,
+   implementation, or validation/review.
+2. The selected route is not exposed as stable metadata that a Storm hook can
+   safely capture.
+3. `on_complete` is post-workflow and cannot provide the required pre-work
+   authoring grill or route-specific lifecycle boundary.
 
-1. **Plan (Polytoken only)** (`activation_steps_append`): start `bmad-dev-story` in Polytoken's shipped `plan` facet (or switch there before opening the issue). Resolve and inspect the Todo story issue or child ticket, its published spec, story file, and project context without changing execution state. Other hosts retain the prior behavior and invoke `storm-linear open` at entry.
-2. **Pre-flight grill** (`activation_steps_append`, gated by `grill_on_implement`): in the default `gaps-only` mode, probe only what the published spec leaves ambiguous, then one confirmation. `full` re-interviews; `off` trusts the spec. This step had no equivalent in the old flow — `/implement` trusted the spec cold.
-3. **Goal-backed handoff (Polytoken only)**: after grilling, finish and review the implementation plan, then submit it with Polytoken's native `handoff_plan`. Approval activates the saved-session goal and transitions into `execute`; direct `propose_goal` or a direct switch from the shipped `plan` facet is neither needed nor supported. On execution entry, verify the active goal with `read_goal`, then invoke `storm-linear open` before changing implementation files. If plan integration did not activate a goal, halt with the issue still Todo. A rejected/canceled handoff likewise leaves the issue Todo. The execute session that opens an issue owns closing it out; child-ticket sessions never touch the parent story issue.
-4. **Implement** (BMM native + storm-tdd): dev-story executes the story file's tasks/subtasks under its own HALT rules and the project's verification regime (zero-warning build, targeted then full gdUnit4 suites, visual procedure for UI work). A storm persistent fact binds implementation to `storm-tdd`: test-first at the seams recorded in the story's *Seams & test points* section, red before green, one vertical slice at a time, and no test at a seam the operator hasn't confirmed.
-5. **Review**: `bmad-code-review` runs its native context-free adversarial layers (Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor); its `on_complete` then runs `storm-cross-review` — external model families over the same diff+spec packet, findings merged into one triage, deduped, multi-model agreement ranked up. Every actionable finding is fixed or explicitly rebutted; fixes trigger a **complete fresh pass**, up to `review_loop_max_rounds`, then halt-and-report if not converged.
-6. **Close** (`on_complete`): only after a clean exit — `storm-linear close` comments the completion record (what shipped, verification actually run, declined findings with reasons, deferred follow-ups) *before* moving the issue to `Done`, then reconciles `sprint-status.yaml` to `done` **only for a story close** (a child-ticket close reconciles nothing; the last child's session reports the story as ready to close rather than closing the parent). A non-clean exit leaves the issue `In Progress`, stated explicitly.
+`storm-build` receives an explicit subcommand and target first, performs the
+Storm pre-work, invokes upstream Build, and owns only the matching post-work.
+It does not infer a route from mutable sprint or Linear state. An invalid or
+ambiguous wrapper subcommand fails closed with no Storm tracker side effect.
+
+## Authoring: `storm-build author <story-key>`
+
+The author wrapper preserves the grilled authoring flow while making its
+boundary explicit:
+
+1. **Capture the target and route.** The wrapper fixes `author` and the story key
+   before doing any Storm or Build work.
+2. **Grill before Build.** `storm-grilling` runs in `full` mode: one question at
+   a time, shared understanding, glossary/ADR capture, and a deliberate
+   kick-back when the story is too large or unclear. It captures
+   `Seams & test points` as explicit input to the Build authoring request.
+3. **Run upstream Build.** Pass the captured seam list in the authoring request;
+   `bmad-build` then produces the story/spec artifact with tasks, acceptance
+   criteria, and development notes.
+4. **Verify the artifact.** The wrapper verifies that the completed artifact
+   carries the captured `Seams & test points`. If they are missing, stop without
+   spec review or publication.
+5. **Review and publish.** Offer optional `storm-spec-review`, fold accepted
+   findings into the verified artifact, then invoke `storm-linear publish` when
+   the artifact is ready.
+6. **Readiness exactly once.** The wrapper makes exactly one
+   `bmad-sprint-planning` readiness call for this author lifecycle. It does not
+   write `sprint-status.yaml` directly or hide a second readiness attempt.
+
+The Linear publication and planner readiness call are separate cross-system
+operations. A successful publication followed by planner failure leaves the
+issue published but blocked; repair belongs to `bmad-sprint-planning`.
+
+### Optional slicing
+
+For a story too large for one implementation session, an operator may run
+`storm-linear slice <story-key>` after publication. It creates child tickets and
+blocking edges; it is not an automatic wrapper step. Implementors work the
+frontier of tickets with no open blockers.
+
+## Implementation: `storm-build implement <story-key-or-issue>`
+
+The implementation wrapper preserves the existing Polytoken
+handoff/open/TDD/review/close sequence. Upstream Build renderer details remain
+outside this contract; these tracker and execution gates do not.
+
+1. **Plan.** In Polytoken, use the shipped `plan` facet to inspect the Todo
+   story issue or child ticket, published specification, story file, and project
+   context. Planning does not open the issue or mutate implementation files.
+2. **Pre-flight grill.** `storm-grilling` applies the configured
+   `grill_on_implement` mode: `gaps-only` by default, `full` for a fresh
+   interview, or `off` when the published specification is trusted.
+3. **Handoff.** Finish and review the implementation plan, then submit the
+   native `handoff_plan`. Approval activates the saved-session goal and enters
+   `execute`. A rejection, cancellation, or missing goal leaves the issue
+   `Todo` and blocks mutation.
+4. **Open.** In the execute session, verify the goal with `read_goal`, invoke
+   `storm-linear open`, and verify that the target is `In Progress` before any
+   implementation mutation. The session that opens a target owns its close-out.
+5. **TDD and implementation.** `storm-tdd` enforces test-first work at the
+   seams agreed during grilling: red evidence before green evidence, one
+   vertical slice at a time, and no unconfirmed seam tests.
+6. **Review.** Run the configured native Build review and the existing
+   `storm-cross-review` loop as applicable. Findings are fixed or explicitly
+   rebutted; each fix requires a complete fresh review pass bounded by
+   `review_loop_max_rounds`.
+7. **Close.** After a clean exit and completion record, `storm-linear close`
+   moves the target to `Done`.
+8. **Reconcile once for a story only.** If the target is the story issue, invoke
+   exactly one planner reconciliation. If the target is a child ticket, invoke
+   no planner reconciliation and never close, mutate, or reconcile the parent
+   story. A child close remains a child close.
+
+If Linear reaches `Done` and the one planner reconciliation fails, Linear stays
+`Done` and `bmad-sprint-planning` owns repair. The wrapper reports both facts;
+it does not imply that the Linear transition was undone.
+
+## Validation: `storm-build validate <scope>`
+
+The validation wrapper invokes upstream `bmad-build` validation/review for the
+requested scope and may add `storm-cross-review`. It does not publish, open, or
+close Linear work, write or reconcile sprint status, or perform readiness
+effects. This is the preferred explicit lifecycle-safe validation route.
+
+Standalone validation may remain transitional or upstream-owned compatibility,
+but it is not a Storm dependency. Separately, standalone `bmad-code-review` plus
+`storm-cross-review` remains an active independent review surface. It has not
+been renamed or removed; its native review completion can feed the existing
+cross-model panel without turning that surface into the `storm-build` wrapper.
+
+## Direct Build and shim behavior
+
+Direct `bmad-build`, `bmad-create-story`, `bmad-dev-story`, and `bmad-quick-dev`
+calls all remain upstream calls. The three old names warn and forward directly
+to Build, but Storm intentionally does not wrap them. No automatic Storm
+`storm-linear publish`, `storm-linear open`, `storm-linear close`, readiness
+refresh, or sprint reconciliation occurs from those calls.
+
+The explicit `storm-build` subcommands are the only documented Storm-managed
+authoring, implementation, and validation lifecycle entrypoints. Direct Build
+route selection is upstream behavior, not something Storm claims to observe or
+prove through a customization callback.
+
+## Partial failures
+
+Cross-system sequences are deliberately not described as atomic:
+
+- If Linear publication succeeds but the author's single planner readiness call
+  fails, the issue is **published but blocked**. The local readiness projection
+  is unresolved; use `bmad-sprint-planning` to inspect and repair it.
+- If story-target Linear `Done` succeeds but the wrapper's single planner
+  reconciliation fails, Linear remains **Done** while the local sprint
+  projection is stale. Use `bmad-sprint-planning` repair; do not pretend the
+  Linear transition was undone.
+- A child-target close has no planner reconciliation to fail and never mutates
+  the parent story's projection.
+
+The operator-facing result must name each completed and failed side effect.
+Neither publication/readiness nor Done/reconciliation is atomic.
+
+## Retrospectives
+
+Current retrospectives default to a lean, evidence-based pass. Party/role-play
+is optional rather than the default, and the same behavior is available
+headlessly. Findings are sourced to the relevant story, diff, verification
+result, transcript, tracker record, or other available evidence; ungrounded
+themes are not presented as facts.
+
+The retrospective aggregates refactor opportunities across the work instead of
+only listing story-local complaints, including duplication, pattern divergence,
+god-class growth, cross-story seams, and specification drift.
+
+Actions are proposals, not automatic edits. Route an accepted action through
+`bmad-correct-course` when it changes product/work scope, or through
+`storm-harness-improvement` when it changes the harness or its durable process.
+
+## Compatibility and migration mapping
+
+The following names explain compatibility only; they are not alternate
+Storm-managed lifecycle entrypoints:
+
+| Compatibility name | Destination/behavior | Rule |
+|---|---|---|
+| `bmad-create-story` | upstream `bmad-build` | Warn, then forward the original input directly; no Storm wrapper. |
+| `bmad-dev-story` | upstream `bmad-build` | Warn, then forward the original input directly; no Storm wrapper. |
+| `bmad-quick-dev` | upstream `bmad-build` | Warn, then forward the original input directly; no Storm wrapper. |
+| `bmad-sprint-status` | `bmad-sprint-planning` status intent | Retired compatibility name; forward to the installed planner. |
+| `check-implementation-readiness` | `bmad-sprint-planning` readiness intent | Retired compatibility name; forward to the installed planner. |
+| `/create-story` | `storm-build author <story-key>` | Delegates to the explicit Storm author wrapper. |
+| `/implement` | `storm-build implement <story-key-or-issue>` | Delegates to the explicit Storm implementation wrapper. |
+| `/quick-dev` | unwrapped upstream `bmad-build` | Forwards directly; no Storm lifecycle effects. |
+| `validate-story` | `storm-build validate` or upstream compatibility | Transitional/upstream-owned only; not a Storm dependency. |
+| `bmad-code-review` + `storm-cross-review` | independent review surface | Active and separate; not renamed or removed. |
+| `/wayfinder`, `story-plan`, `story-execute` | — | Retired; not advertised as active routes. |
 
 ## Ongoing hygiene
 
-`storm-reconcile` replaces reconciliation-by-discipline: run it after bulk changes, after BMAD updates, or on suspicion; it audits scope↔sprint↔Linear with the phase-decides rule and proposes fixes, applying only what the operator approves. `storm-setup check` audits the *wiring itself* after every upstream update. `storm-harness-improvement` remains the path for promoting trajectory friction into durable fixes. BMAD retrospectives close each epic as before.
+Run `storm-reconcile` after bulk changes, BMAD updates, or when drift is
+suspected. It audits scope, sprint projection, and Linear using the phase-decides
+rule, reports drift, and hands approved local projection repair to
+`bmad-sprint-planning`; it does not invoke the planner itself or write
+`sprint-status.yaml` directly. After every BMAD or upstream `quick-update`, run
+`storm-setup check` and resolve its findings before relying on the wiring.
+`storm-harness-improvement` promotes repeated trajectory friction into a durable,
+narrow fix.
 
-## Old → new mapping
-
-| Old (mattpocock era) | New home | Notes |
-|---|---|---|
-| `/create-story` (custom bridge) | `bmad-create-story` + storm overrides | Story resolution and context-loading were duplicating what BMM does natively; the bridge dissolves into the grilling hook |
-| `grilling` + `domain-modeling` | `storm-grilling` | Vendored port; same interview rules, project glossary/ADR paths wired in; new `gaps-only` mode for implementation entry |
-| `/to-spec` | `bmad-create-story` `on_complete` → `storm-linear publish` | Synthesis happens in the story draft; publication (issue update, story-key anchor, labels, `ready-for-dev` flip) is the hook, verbatim from the old contract |
-| `review-spec` | `storm-spec-review` | Upgraded: BMAD lenses + cross-model external reviewers, pre-publication gate |
-| `/to-tickets` | `storm-linear slice` | Same child-ticket + blocking-edge mechanics; **now operator-invoked after publish**, not a workflow step |
-| `/implement` (plan + open ticket) | `bmad-dev-story` activation → Polytoken `plan` + grill + approved goal-backed handoff → `storm-linear open` in `execute` | Polytoken delays opening until planning is approved; other hosts open at entry. Open/close remain one contract owned by the execute session |
-| `/implement` (build loop) | `bmad-dev-story` (BMM native) | Tasks/subtasks executed with tests under the project verification regime |
-| `/tdd` | `storm-tdd` + dev-story persistent_fact | Vendored port; seams agreed during grilling land in the story's *Seams & test points* dev-notes section, and dev-story is bound to test-first at exactly those seams |
-| `/code-review` + review-until-clean loop | `bmad-code-review` + `storm-cross-review` | Native adversarial layers plus genuinely cross-model panel; same loop discipline, now with a configured round cap |
-| `/implement` (close-out) | `bmad-dev-story` `on_complete` → `storm-linear close` | Completion record, Done, story-only sprint reconcile — the old contract's exact rules |
-| `/triage` (intake) | `storm-linear intake` + correct-course | Project-less `needs-triage` issue; triage-labels doc still applies |
-| `/wayfinder` | **no storm equivalent yet** | Map-issue + child-ticket research planning; port as `storm-wayfinder` if the need recurs |
-| `harness-improvement` | `storm-harness-improvement` | Moved into the module; targets updated for the override/module split |
-
-## Watch-list for the first end-to-end story
-
-The remaining deliberate thinning — no `/wayfinder` — plus the manual slicing step and the new seam-list round-trip (grilling → story dev notes → storm-tdd) are the places the new flow most plausibly squeaks. Run one backlog story (1-12, 1-13, or 1-15) through the whole pipe and route any friction through `storm-harness-improvement` before retiring the old skills from `.claude/skills/`.
+For the conformance contract, wrapper-boundary smoke scenarios, and Polytoken
+safety limitations, see [`workflow-conformance.md`](workflow-conformance.md).

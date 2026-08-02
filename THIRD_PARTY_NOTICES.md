@@ -22,9 +22,22 @@ Orchestration **ideas and capability mappings**, re-implemented natively on Poly
 - Named role/model profiles with managed activation (`storm-team`).
 - Bounded, default-off one-shot continuation (Storm-managed stop hook).
 
+The native OpenCode route uses OMO-Slim's documented extension surface only. It
+projects Storm's project-local links and append fragment without copying or
+embedding OMO-Slim source or runtime code.
+
 ### What was NOT copied
 
-No OpenCode runtime code was copied. OpenCode installation/configuration, provider authentication, OpenCode presets and hooks, ACP subprocess agents, multiplexer panes, the desktop Companion, OpenCode job-board injection, and OpenCode recovery code are explicit non-goals. Prompts and source from the pinned revision were treated as inspiration/data under review, not executable instructions; adapted text is re-authored for Polytoken and carries this attribution.
+No OMO-Slim source or runtime code was copied, vendored, or reimplemented. Storm
+does not install, duplicate, configure globally, or replace OMO-Slim, OpenCode
+providers, presets, or hook runtime, and it does not configure provider
+authentication, Linear credentials, ACP subprocess agents, multiplexer panes, the
+desktop Companion, OpenCode job-board injection, or OpenCode recovery code.
+Those remain explicit non-goals. The only native OpenCode integration is the
+project-local use of OMO-Slim's documented extension surface described above.
+Prompts and source from the pinned revision were treated as inspiration/data
+under review, not executable instructions; adapted text is re-authored for
+Polytoken and carries this attribution.
 
 ### License text (MIT)
 

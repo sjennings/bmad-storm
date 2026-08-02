@@ -1,0 +1,16 @@
+# storm override — retrospective. Sparse: deltas only.
+# Written by storm-setup; edit the template in the module repo, then re-run storm-setup.
+
+[workflow]
+
+persistent_facts = [
+  "Retrospectives are lean, evidence-based, and headless-capable. Cite the source for every finding (story, diff, test result, transcript, tracker record, or other available evidence); do not present an unsupported theme as fact.",
+  "Role-play or party mode is optional and off by default. Headless operation preserves the same evidence and proposal rules without theatrical interaction.",
+  "Aggregate refactor opportunities across the work, looking for evidence of duplication, pattern divergence, god-class growth, cross-story seam problems, and specification drift (seam/spec drift).",
+  "Follow-up is proposal-only: route accepted product or scope changes through bmad-correct-course, and accepted harness/process changes through storm-harness-improvement. Never directly change the tracker, code, or scope from a retrospective.",
+]
+
+activation_steps_append = [
+  "Collect the available work evidence before forming findings, cite each finding's source, and report aggregate refactor opportunities rather than only story-local complaints. Keep party/role-play disabled unless the operator explicitly requests it.",
+  "Present follow-ups as proposals with the correct destination (`bmad-correct-course` for product/scope, `storm-harness-improvement` for harness/process). Do not apply tracker, code, or scope changes in this workflow, including in headless mode.",
+]

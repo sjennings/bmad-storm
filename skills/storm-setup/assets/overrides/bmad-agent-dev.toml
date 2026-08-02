@@ -3,8 +3,8 @@
 
 [agent]
 
-# Travels into every workflow the dev agent dispatches (dev-story, create-story,
-# code-review, quick-dev, qa-generate).
+# Travels into every workflow the dev agent dispatches (Build, code review,
+# quick-dev compatibility, and QA generation).
 persistent_facts = [
   "file:{project-root}/_bmad/storm/storm-linear/reference/issue-tracker.md",
   "Tracker operations (publish/open/close/slice/mirror/intake against Linear) run through the storm-linear skill under its phase-split authority contract — never improvised MCP calls.",

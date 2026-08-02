@@ -4,6 +4,7 @@ import importlib.util
 import json
 import subprocess
 import sys
+import tomllib
 import unittest
 from pathlib import Path
 
@@ -16,6 +17,9 @@ CONFORMANCE_DOC = (ROOT / "docs/workflow-conformance.md").read_text()
 MODULE = (ROOT / "skills/module.yaml").read_text()
 HELP = (ROOT / "skills/module-help.csv").read_text()
 CONTRACT = json.loads(CONTRACT_PATH.read_text())
+OVERRIDES = ROOT / "skills/storm-setup/assets/overrides"
+BUILD_OVERRIDE = OVERRIDES / "bmad-build.toml"
+STORM_BUILD_SKILL = ROOT / "skills/storm-build/SKILL.md"
 
 
 def load_validator():
@@ -39,6 +43,7 @@ class ContractStructureTests(unittest.TestCase):
     """The JSON contract encodes the canonical authority and transition rules."""
 
     def test_contract_encodes_canonical_authority_and_transitions(self):
+        self.assertEqual("2.0.0", CONTRACT["contract_version"])
         authorities = CONTRACT["authorities"]
         self.assertEqual("bmad", authorities["pre_publication"]["owner"])
         self.assertEqual("linear", authorities["post_publication"]["owner"])
@@ -75,6 +80,95 @@ class ContractStructureTests(unittest.TestCase):
         self.assertEqual(["close_ready"], by_event["issue_closed"][0]["from"])
         self.assertEqual(["published"], by_event["sprint_ready_updated"][0]["from"])
 
+    def test_direct_build_is_unconditionally_unwrapped(self):
+        self.assertTrue(BUILD_OVERRIDE.exists())
+        self.assertEqual(
+            1,
+            len(list(OVERRIDES.glob("bmad-build.toml"))),
+            "Build must have exactly one Storm override",
+        )
+        for legacy in ("bmad-create-story.toml", "bmad-dev-story.toml", "bmad-quick-dev.toml"):
+            self.assertFalse((OVERRIDES / legacy).exists(), legacy)
+
+        build = tomllib.loads(BUILD_OVERRIDE.read_text())
+        workflow = build["workflow"]
+        self.assertEqual(["persistent_facts"], list(workflow))
+        self.assertEqual(1, len(workflow["persistent_facts"]))
+        fact = workflow["persistent_facts"][0]
+        for text in (
+            "upstream canonical workflow",
+            "intentionally unwrapped by Storm",
+            "bmad-create-story",
+            "bmad-dev-story",
+            "bmad-quick-dev",
+            "no Storm tracker or sprint lifecycle side effects",
+            "storm-build author",
+            "storm-build implement",
+            "storm-build validate",
+        ):
+            self.assertIn(text, fact)
+        self.assertNotIn("activation_steps_append", build["workflow"])
+        self.assertNotIn("on_complete", build["workflow"])
+
+    def test_storm_build_owns_explicit_modes_and_planner_cardinality(self):
+        self.assertTrue(STORM_BUILD_SKILL.exists())
+        wrapper = STORM_BUILD_SKILL.read_text()
+        for syntax in (
+            "storm-build author <story-key>",
+            "storm-build implement <story-key-or-issue>",
+            "storm-build validate <scope>",
+        ):
+            self.assertIn(syntax, wrapper)
+        self.assertIn("zero", wrapper)
+        self.assertIn("exactly one adaptive", wrapper)
+        self.assertIn("If the target is the story issue", wrapper)
+        self.assertIn("do not call sprint planning", wrapper.lower())
+        self.assertIn("must not publish, open, or close", " ".join(wrapper.split()))
+        self.assertEqual("storm-build", CONTRACT["route_selection"]["canonical_workflow"])
+        self.assertEqual("storm-build", CONTRACT["route_selection"]["planner_call_owner"])
+        self.assertEqual(
+            {"author": 1, "story_implementation": 1, "child_implementation": 0, "validation_review": 0},
+            CONTRACT["route_selection"]["planner_call_cardinality"],
+        )
+
+    def test_sprint_planning_owns_projection_and_retrospective_is_advisory(self):
+        planning = tomllib.loads((OVERRIDES / "bmad-sprint-planning.toml").read_text())["workflow"]
+        planning_text = str(planning)
+        for text in (
+            "sole owner",
+            "readiness",
+            "status",
+            "validate",
+            "repair",
+            "upstream deterministic",
+            "--autonomous",
+            "only when the installed sprint-planning skill documents that flag",
+            "headless",
+            "fallback",
+            "warn",
+            "legacy-compatible",
+            "bmad-sprint-status",
+            "bmad-check-implementation-readiness",
+        ):
+            self.assertIn(text, planning_text)
+
+        retrospective = tomllib.loads((OVERRIDES / "bmad-retrospective.toml").read_text())["workflow"]
+        retrospective_text = str(retrospective)
+        for text in (
+            "evidence-based",
+            "off by default",
+            "headless",
+            "duplication",
+            "pattern divergence",
+            "god-class growth",
+            "specification drift",
+            "proposal-only",
+            "bmad-correct-course",
+            "storm-harness-improvement",
+            "Never directly change",
+        ):
+            self.assertIn(text, retrospective_text)
+
     def test_child_ticket_rules_are_machinable(self):
         rules = CONTRACT["child_story_rules"]
         self.assertIn("reconciles nothing", rules["child_close"])
@@ -109,7 +203,11 @@ class ContractStructureTests(unittest.TestCase):
         self.assertEqual("directive", enforcement["level"])
         self.assertIn("does not provide a physical sandbox", enforcement["statement"])
         self.assertIn("shell_exec", enforcement["statement"])
-        for scenario in ("smoke_plan_handoff_goal_open_gate", "smoke_role_tool_contracts"):
+        for scenario in (
+            "smoke_storm_build_wrapper_boundary",
+            "smoke_plan_handoff_goal_open_gate",
+            "smoke_role_tool_contracts",
+        ):
             self.assertIn(scenario, enforcement["smoke_scenarios"])
             self.assertIn(scenario, CONFORMANCE_DOC)
 
@@ -124,6 +222,45 @@ class AliasEquivalenceTests(unittest.TestCase):
                 self.assertIn(operation, operations, f"{name} -> unknown {operation}")
             if alias["status"] == "retired":
                 self.assertEqual([], alias["canonical_operations"])
+
+    def test_v7_legacy_operations_warn_and_forward_to_unwrapped_build(self):
+        operations = CONTRACT["operations"]
+        self.assertEqual("canonical", operations["storm-build"]["kind"])
+        self.assertEqual(
+            ["author", "implement", "validate"], operations["storm-build"]["modes"]
+        )
+        self.assertEqual("upstream-canonical", operations["bmad-build"]["kind"])
+        self.assertFalse(operations["bmad-build"]["storm_wrapped"])
+        self.assertTrue(operations["bmad-code-review"]["standalone"])
+        self.assertEqual("storm-build validate", operations["bmad-code-review"]["preferred_entry"])
+        self.assertIn("explicit payload", operations["storm-grilling"]["handoff"])
+        self.assertIn("do not write a story/spec artifact", operations["storm-grilling"]["handoff"])
+        for name, route in (
+            ("bmad-create-story", "upstream authoring"),
+            ("bmad-dev-story", "upstream implementation"),
+            ("bmad-quick-dev", "upstream intent resolution"),
+        ):
+            shim = operations[name]
+            self.assertEqual("deprecation-shim", shim["kind"])
+            self.assertTrue(shim["warning"])
+            self.assertEqual("bmad-build", shim["routes_to"])
+            self.assertEqual(route, shim["route"])
+            self.assertIn("forward original input", " ".join(shim["effects"]))
+
+        self.assertEqual(["storm-build"], CONTRACT["aliases"]["/create-story"]["canonical_operations"])
+        self.assertEqual(["authoring"], [CONTRACT["aliases"]["/create-story"]["route"]])
+        self.assertEqual(["storm-build"], CONTRACT["aliases"]["/implement"]["canonical_operations"])
+        self.assertEqual("implementation", CONTRACT["aliases"]["/implement"]["route"])
+
+        self.assertEqual("bmad-sprint-planning", operations["bmad-sprint-status"]["routes_to"])
+        self.assertTrue(operations["bmad-sprint-status"]["warning"])
+        self.assertEqual(
+            "retired", operations["bmad-check-implementation-readiness"]["status"]
+        )
+        self.assertEqual(
+            "bmad-sprint-planning",
+            operations["bmad-check-implementation-readiness"]["routes_to"],
+        )
 
     def test_aliases_contain_no_independent_lifecycle(self):
         aliases = CONTRACT["aliases"]
@@ -141,9 +278,50 @@ class AliasEquivalenceTests(unittest.TestCase):
                 aliases[name]["canonical_operations"],
                 f"{name} must not close independently",
             )
+        self.assertEqual("retired", aliases["/to-spec"]["status"])
+        self.assertEqual([], aliases["/to-spec"]["canonical_operations"])
+        self.assertIn("storm-build author", aliases["/to-spec"]["rule"])
+
+    def test_sprint_status_ownership_and_partial_outcomes_are_explicit(self):
+        planning = CONTRACT["operations"]["bmad-sprint-planning"]
+        self.assertEqual("bmad-sprint-planning", CONTRACT["authorities"]["sprint_planning"]["owner"])
         self.assertEqual(
-            ["storm-linear.publish"], aliases["/to-spec"]["canonical_operations"]
+            {"readiness", "status", "validate", "repair"},
+            set(planning["intents"]),
         )
+        self.assertEqual("upstream deterministic script", planning["implementation"])
+        self.assertEqual("fallback-only with warning", planning["inference"])
+        for operation in ("storm-linear.publish", "storm-linear.close"):
+            self.assertFalse(CONTRACT["operations"][operation]["writes_sprint_status"])
+            self.assertFalse(CONTRACT["operations"][operation]["invokes_planner"])
+        self.assertFalse(CONTRACT["operations"]["storm-reconcile"]["writes_sprint_status"])
+        self.assertEqual(
+            ["operator handoff: bmad-sprint-planning repair intent"],
+            CONTRACT["operations"]["storm-reconcile"]["requests"],
+        )
+        self.assertFalse(CONTRACT["operations"]["storm-reconcile"]["invokes_planner"])
+        self.assertEqual("advisory", CONTRACT["operations"]["bmad-retrospective"]["kind"])
+        self.assertEqual(
+            ["bmad-correct-course", "storm-harness-improvement"],
+            CONTRACT["operations"]["bmad-retrospective"]["follow_up"],
+        )
+        self.assertEqual(
+            "published but blocked before implementation",
+            CONTRACT["partial_outcomes"]["publication_success_planning_failure"]["result"],
+        )
+        self.assertEqual(
+            "Linear Done with sprint reconciliation repair required",
+            CONTRACT["partial_outcomes"]["linear_done_planning_failure"]["result"],
+        )
+
+    def test_legacy_override_files_are_not_shipped_as_templates(self):
+        for legacy in ("bmad-create-story.toml", "bmad-dev-story.toml", "bmad-quick-dev.toml"):
+            self.assertFalse((OVERRIDES / legacy).exists())
+        setup = (ROOT / "skills/storm-setup/SKILL.md").read_text()
+        self.assertIn("manual merge", setup)
+        self.assertIn("Never auto-delete, auto-merge", setup)
+        self.assertIn("direct-Build boundary", setup)
+        self.assertIn("storm-build", setup)
 
     def test_missing_aliases_are_not_advertised(self):
         for retired in ("/wayfinder", "story-execute", "story-plan"):
@@ -159,7 +337,6 @@ class AliasEquivalenceTests(unittest.TestCase):
             "require-explicit",
             "handoff_plan",
             "storm-linear slice",
-            "phase-decides",
         ):
             self.assertIn(phrase, CONFORMANCE_DOC)
 
@@ -179,6 +356,19 @@ class TranscriptFixtureTests(unittest.TestCase):
                 events, CONTRACT, policy=policy, max_rounds=max_rounds
             )
             self.assertEqual([], errors, f"{path.name}: {errors}")
+
+    def test_partial_planner_failure_fixtures_keep_completed_linear_outcome(self):
+        publication_events, _, _ = load_fixture(
+            FIXTURES / "valid_publication_planner_failure.json"
+        )
+        self.assertEqual("publish_succeeded", publication_events[-2]["event"])
+        self.assertEqual("planner_readiness_failed", publication_events[-1]["event"])
+        self.assertEqual([], VALIDATOR.validate_transcript(publication_events, CONTRACT))
+
+        done_events, _, _ = load_fixture(FIXTURES / "valid_done_reconciliation_failure.json")
+        self.assertEqual("issue_closed", done_events[-2]["event"])
+        self.assertEqual("planner_reconciliation_failed", done_events[-1]["event"])
+        self.assertEqual([], VALIDATOR.validate_transcript(done_events, CONTRACT))
 
     def test_invalid_fixtures_are_rejected(self):
         invalid = sorted(FIXTURES.glob("invalid_*.json"))

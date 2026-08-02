@@ -1,7 +1,7 @@
 code: storm
 name: "August Storm Harness"
-description: "Project harness for August Storm on BMAD: Linear phase-split source of truth, grilling interviews, cross-model spec/code review panels, tracker drift reconciliation, harness improvement loop. Requires the BMad Method (bmm) module."
-module_version: 0.4.0
+description: "Project harness for August Storm on BMAD: explicit storm-build lifecycle wrapper around unwrapped upstream bmad-build, Linear phase-split source of truth, grilling interviews, cross-model spec/code review panels, tracker drift reconciliation, and a proposal-only harness improvement loop. Requires the BMad Method (bmm) module and a configured linear-server MCP."
+module_version: 0.5.0
 default_selected: false
 
 module_greeting: >
@@ -10,12 +10,18 @@ module_greeting: >
 
     > use the storm-setup skill
 
-  It writes the sparse customization overrides into _bmad/custom/ that wire
-  storm into the stock BMM workflows (create-story, dev-story, code-review,
-  correct-course), then verifies each override resolves cleanly. The module
+  It installs the storm-build wrapper and writes sparse compatibility facts into
+  _bmad/custom/ for the stock BMM workflows (build, sprint-planning,
+  retrospective, code-review, correct-course), then verifies each override
+  resolves cleanly. Direct bmad-build and deprecated create-story, dev-story,
+  and quick-dev names remain unwrapped by Storm and receive no lifecycle hook;
+  use storm-build for an explicit route. The module
   requires the BMad Method (bmm) module: _bmad/bmm/config.yaml and a
   sprint-status.yaml from bmad-sprint-planning. Re-run storm-setup after any
-  BMAD update (`storm-setup check`) to confirm the wiring still lands.
+  BMAD update (`storm-setup check`) to confirm the wiring still lands. The
+  native OpenCode route additionally requires OMO-Slim to be already installed
+  and the linear-server MCP to be installed/configured; storm does not install,
+  duplicate, vendor, or globally configure either runtime or Linear credentials.
 
 # --- Install prompts -------------------------------------------------------
 
@@ -33,7 +39,7 @@ linear_team_key:
 
 grill_on_implement:
   prompt:
-    - "How thorough should the pre-flight grilling interview be when implementation (bmad-dev-story) starts?"
+    - "How thorough should the pre-flight grilling interview be when storm-build implement starts?"
     - "'gaps-only' probes only what the published spec leaves ambiguous; 'full' re-interviews scope end to end."
   scope: user
   default: "gaps-only"

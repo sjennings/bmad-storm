@@ -1,0 +1,17 @@
+# storm override — sprint planning. Sparse: deltas only.
+# Written by storm-setup; edit the template in the module repo, then re-run storm-setup.
+
+[workflow]
+
+persistent_facts = [
+  "`bmad-sprint-planning` is the sole owner of readiness, the sprint status view, status validation and repair, legacy-compatible sprint-plan/status handling, and every sprint-status.yaml projection write. `storm-build` performs its one caller-owned planner call; other Storm workflows never write the projection directly.",
+  "Readiness, status, validate, and repair are internal intents of bmad-sprint-planning, not separate active Storm workflows or competing status commands.",
+  "`bmad-sprint-status` is a warning compatibility shim that forwards its original status request to bmad-sprint-planning. `bmad-check-implementation-readiness` is retired compatibility wording that forwards readiness requests to bmad-sprint-planning; neither is an active Storm workflow.",
+  "Defer sprint-status parsing and writing to the upstream deterministic sprint-planning script. Preserve its legacy-compatible sprint plan/status output and do not invent a replacement output schema.",
+  "Support the installed upstream headless capability exactly as advertised: pass `--autonomous` only when the installed sprint-planning skill documents that flag; otherwise use its documented native headless intent or script subcommand with JSON output. Never assume a universal flag. Use inference only as a fallback when deterministic inputs are unavailable, and warn explicitly whenever inference is used.",
+]
+
+activation_steps_append = [
+  "Resolve the requested readiness, status, validate, or repair intent inside bmad-sprint-planning and delegate parsing and all writes to the upstream deterministic script. Do not route the request to a separate Storm status workflow.",
+  "For a headless invocation, inspect the installed skill's usage/help and run its advertised non-interactive deterministic path without inventing flags. Preserve legacy-compatible sprint-plan/status output; if fallback inference is necessary, warn and identify the inferred fields.",
+]

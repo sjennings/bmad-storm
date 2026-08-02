@@ -1,6 +1,6 @@
 ---
 name: storm-grilling
-description: Relentless one-question-at-a-time interview to shared understanding, with domain-model capture into the project glossary and ADRs. Use at story authoring, at implementation entry (per the grill_on_implement gate), or whenever the operator wants a plan, decision, or idea stress-tested.
+description: Relentless one-question-at-a-time interview to shared understanding, with domain-model capture into the project glossary and ADRs. Use from storm-build author before upstream bmad-build, from storm-build implement at the grill_on_implement gate, or whenever the operator wants a plan, decision, or idea stress-tested.
 ---
 
 # Storm Grilling
@@ -43,4 +43,4 @@ Load `{project-root}/_bmad/storm/config.yaml` for `grill_on_implement`. Project 
 
 ## Handoff
 
-When the interview converges, state the shared understanding in a compact summary: decisions made, terms resolved, ADRs recorded, open items deliberately deferred, and — from full mode — the agreed **Seams & test points** list. The calling workflow (`bmad-create-story`) must carry that list into the story draft's dev notes under a `Seams & test points` heading; it is what `storm-tdd` tests against during implementation. This skill itself writes no story files and mutates no tracking state.
+When the interview converges, state the shared understanding in a compact summary: decisions made, terms resolved, ADRs recorded, open items deliberately deferred, and — from full mode — return the agreed **Seams & test points** as an explicit handoff payload to the calling wrapper. `storm-build author` captures that payload and is responsible for providing it to upstream `bmad-build`; this skill does not write a story/spec artifact or assume a future Build artifact. The payload is what `storm-tdd` tests against during implementation. This skill itself mutates no tracking state.

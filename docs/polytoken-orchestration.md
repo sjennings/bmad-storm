@@ -1,6 +1,6 @@
 # Polytoken Orchestration
 
-Operator-facing architecture and migration guide for the Storm Polytoken package (v0.4.0). The canonical workflow rules live in [`skills/storm-contract/workflow-contract.json`](../skills/storm-contract/workflow-contract.json) and their human companion [`docs/workflow-conformance.md`](workflow-conformance.md); this document covers how the orchestration package is put together, how to install and operate it, and what was ported from `oh-my-opencode-slim` (OmO Slim). Where this document and the JSON contract disagree, the contract wins and this document is stale.
+Operator-facing architecture and migration guide for the Storm Polytoken package (v0.5.0). The canonical workflow rules live in [`skills/storm-contract/workflow-contract.json`](../skills/storm-contract/workflow-contract.json) and their human companion [`docs/workflow-conformance.md`](workflow-conformance.md); this document covers how the orchestration package is put together, how to install and operate it, and what was ported from `oh-my-opencode-slim` (OmO Slim). Where this document and the JSON contract disagree, the contract wins and this document is stale.
 
 ## Architecture: the authority chain
 
@@ -9,7 +9,7 @@ Three systems share authority, split by phase. No Storm component creates a four
 | Phase | Authority | What Storm does there |
 |---|---|---|
 | Pre-publication | **BMAD** — `epics.md`, `sprint-status.yaml`, the story file | Story authoring, grilling, spec review |
-| Publication (single handoff) | **`storm-linear publish`** | Writes the spec to the story-key-anchored Linear issue, sets `Todo` + `ready-for-agent`, then moves the sprint entry to `ready-for-dev`. Atomic: a failed publish leaves the sprint file untouched. |
+| Publication (single handoff) | **`storm-linear publish`** | Writes the spec to the story-key-anchored Linear issue, sets `Todo` + `ready-for-agent`, then the wrapper requests planner readiness. Publication and local projection are separate; a successful publish with planner failure leaves the issue published but blocked. |
 | Post-publication | **Linear** — the issue carrying the published spec | Implementation through `Done`; local authoring files become evidence/history |
 
 Polytoken's shipped `plan` and `execute` facets remain the control planes. Orchestration augments them; it never replaces their handoff or goal semantics:
@@ -34,6 +34,108 @@ Storm's workflow is enforced at the **directive/prompt and permission-classifier
 **Approved deviation — `subagent` is not deny-listable on Polytoken 0.5.9.** A live Polytoken 0.5.9 gate rejected the `storm-fixer`/`storm-designer` definitions at load time: the runtime does not allow the harness-managed `subagent` tool in a subagent's `tools_deny` list, so an exact deny-union over every lifecycle tool is unavailable on 0.5.9. The operator approved the documented redesign: only `subagent` was removed from those two deny lists. Every other boundary is unchanged — `allow_subagent_spawn: false`, the structured exit schemas, and all lifecycle/Linear/shell denials (including `message_subagent`) remain in force. The no-spawning boundary is therefore enforced by `allow_subagent_spawn`/runtime semantics plus coordinator convention, **not** by `tools_deny`; no document may claim exact deny-union coverage for `subagent` on 0.5.9. The asset validator encodes this: it requires `allow_subagent_spawn: false` on write roles and rejects `subagent` appearing in a write role's deny list, so the limitation stays explicit and is re-checked on every run. If a future Polytoken version makes `subagent` deny-listable again, restoring it to the deny lists is a one-line asset change plus a validator constant update.
 
 **Observed capability evidence (live gates, Polytoken 0.5.9).** Recorded during the v0.4.0 development gates: all seven projected roles were accepted by `polytoken validate subagent` with no definition errors; a bounded `polytoken exec --facet plan --max-tool-turns 1` fixture run returned `{"status":"fixture-loaded"}`; and the exact `tools_deny(subagent)` gate failed with the documented load-time error above, leading to the approved redesign. Inherited-union denial filtering was **not** proven and is **not** supported on 0.5.9 — the redesign relies on `allow_subagent_spawn: false` plus coordinator convention, and no Storm document may claim otherwise.
+
+## Run one story through Storm orchestration in Polytoken
+
+This is the operator walkthrough for one disposable or controlled story run. It
+uses Storm's explicit wrapper and the locally projected Polytoken assets; it does
+not claim an upstream BMAD Polytoken tool identifier. Upstream BMAD has no
+`--tools polytoken` selector.
+
+1. **Preflight BMAD and Storm.** Follow the [BMAD-METHOD and Storm update
+   checklist](../README.md#updating-bmad-method-and-storm). Commit or back up
+   `_bmad/custom/`, `_bmad/config.toml`, `_bmad/config.user.toml`, and
+   `_bmad/_config/manifest.yaml` before changing them. Run the applicable BMAD
+   install/update command with the official modules retained, then run:
+
+   ```text
+   > use the storm-setup skill with argument check
+   ```
+
+   Resolve every finding before enabling writers. Inspect the manifest and
+   config ownership; do not assume an update was safe.
+2. **Project the Polytoken assets.** From the consuming project root, use the
+   module-local manager, not a hand-written copy:
+
+   ```bash
+   MGR=_bmad/storm/skills/storm-setup/assets/polytoken/scripts/manage_polytoken_assets.py
+   SRC=_bmad/storm/skills/storm-setup/assets/polytoken
+
+   python3 "$MGR" install --source-root "$SRC" --project-root .
+   python3 "$MGR" check   --source-root "$SRC" --project-root . --json
+   ```
+
+   `check` is read-only. Run `storm-doctor` as an additional read-only audit,
+   then `/reload` so the projected definitions are loaded. If OpenCode is the
+   host, also follow its project-local asset-manager steps in
+   [`docs/opencode.md`](opencode.md).
+3. **Start through the coordinator.** Invoke the explicit Storm wrapper with a
+   story key or issue identifier:
+
+   ```text
+   storm-build implement <story-key-or-issue>
+   ```
+
+   The coordinator uses native `/todo` and `/jobs` state. `storm-orchestrate`
+   records each lane with the `storm-lane:` convention, builds dependency edges,
+   and uses the scheduler to check the ready frontier, exclusive ownership,
+   conflicts, and finalization. Do not dispatch a writer directly or override a
+   scheduler ownership/dependency stop.
+4. **Plan and obtain the goal.** The target is inspected in the shipped
+   Polytoken `plan` facet while it remains `Todo`. The required control-plane
+   order is:
+
+   ```text
+   plan → reviewed handoff_plan → active goal → execute → read_goal
+   → storm-linear open → open verified → mutation
+   ```
+
+   Apply the configured implementation grill before the handoff. A rejected or
+   cancelled `handoff_plan`, an absent active goal, or a failed open verification
+   stops the run before implementation mutation.
+5. **Dispatch bounded work.** Only after `read_goal` confirms the active goal and
+   `storm-linear open` has been verified as `In Progress` may the coordinator
+   dispatch `storm-fixer` or `storm-designer`. The lane must have explicit
+   objective, acceptance criteria, file/subsystem ownership, dependencies,
+   exclusions, and validation. `storm-tdd` applies the agreed seams; dependent
+   lanes wait for terminal job results.
+6. **Review, commit, and close.** Run the native Build review and the existing
+   `storm-cross-review` panel as configured. Fixes require a complete fresh pass
+   within `review_loop_max_rounds`. The completion commit policy still requires
+   explicit authority; no worker commits or closes independently. After a clean
+   result and completion record, the owning session calls `storm-linear close`.
+7. **Reconcile the correct target.** For a story target, the wrapper makes
+   exactly one `bmad-sprint-planning` reconciliation after Linear reaches `Done`.
+   For a child-ticket target, it makes no planner reconciliation and never closes,
+   mutates, or reconciles the parent story. A child close remains a child close.
+
+### Inspect and recover
+
+- Inspect `/todo` and `/jobs`, scheduler ownership/dependency findings, structured
+  lane results, `partial_changes`, review packets, and the Linear completion
+  record. `storm-status` is only a projection of native jobs/todos.
+- A failed, timed-out, cancelled, or `rejected-fit` lane is diagnosed before any
+  replacement. Record an explicit disposition; cancellation does not roll back
+  filesystem changes and there is no generic automatic retry.
+- If Linear reaches `Done` but planner reconciliation fails, leave Linear `Done`
+  and repair the local projection through `bmad-sprint-planning`. Do not retry
+  the Linear transition as though publication/close and planner work were
+  atomic.
+- If assets drift or `/reload` rejects definitions, stop before enabling writers.
+  Inspect findings and backups, then use the documented manager rollback only
+  with approval:
+
+  ```bash
+  python3 "$MGR" rollback --project-root . --json
+  ```
+
+  Rerun `check`, `storm-setup check`, and `/reload` after recovery.
+
+Static asset manifests, validators, scheduler checks, and transcript tests prove
+declared contracts only. A disposable run of the smoke scenarios in
+[`docs/workflow-conformance.md`](workflow-conformance.md) is the evidence for
+live tool behavior. Neither static tests nor smoke observations prove a physical
+sandbox or upstream Build route callbacks.
 
 ## Specialist roles and least privilege
 
@@ -162,7 +264,7 @@ Prompt-security hardening applies throughout: never read secret values (check ex
 
 ## Migration from v0.3.0
 
-1. Upgrade/install v0.4.0 through the BMAD module installer.
+1. Upgrade/install v0.5.0 through the BMAD module installer.
 2. Review the new install prompts and defaults (`polytoken_team_profile`, `polytoken_role_model_overrides`, `polytoken_council_models`, `polytoken_max_parallel_jobs`, `polytoken_continue_on_idle` — off by default; `completion_commit_policy` — `require-explicit` by default).
 3. Run `> use the storm-setup skill` and approve the managed projections.
 4. Run `/reload`.

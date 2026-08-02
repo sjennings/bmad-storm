@@ -1,0 +1,9 @@
+{
+  "scenario": "Storm Build author publishes to Linear, then its one planner readiness call fails",
+  "events": [
+    {"event": "scope_resolved"},
+    {"event": "grill_confirmed"},
+    {"event": "publish_succeeded"},
+    {"event": "planner_readiness_failed"}
+  ]
+}
