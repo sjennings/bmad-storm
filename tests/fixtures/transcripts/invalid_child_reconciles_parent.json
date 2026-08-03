@@ -1,25 +1,72 @@
 {
   "scenario": "A child-ticket close never reconciles the parent story's sprint entry",
   "events": [
-    {"event": "scope_resolved"},
-    {"event": "grill_confirmed"},
-    {"event": "publish_succeeded"},
-    {"event": "sprint_ready_updated"},
-    {"event": "slice_completed"},
-    {"event": "plan_created"},
-    {"event": "plan_reviewed"},
-    {"event": "handoff_approved"},
-    {"event": "execute_entered"},
-    {"event": "goal_verified"},
-    {"event": "issue_opened", "target": "child"},
-    {"event": "open_verified"},
-    {"event": "mutation"},
-    {"event": "native_review_passed"},
-    {"event": "cross_review_passed"},
-    {"event": "commit_authorized"},
-    {"event": "commit_completed"},
-    {"event": "completion_commented"},
-    {"event": "child_closed"},
-    {"event": "sprint_reconciled"}
+    {
+      "event": "scope_resolved"
+    },
+    {
+      "event": "grill_confirmed"
+    },
+    {
+      "event": "publish_succeeded"
+    },
+    {
+      "event": "sprint_ready_updated"
+    },
+    {
+      "event": "slice_completed"
+    },
+    {
+      "event": "plan_created"
+    },
+    {
+      "event": "plan_reviewed"
+    },
+    {
+      "event": "handoff_approved"
+    },
+    {
+      "event": "execute_entered"
+    },
+    {
+      "event": "goal_verified"
+    },
+    {
+      "event": "issue_opened",
+      "target": "child"
+    },
+    {
+      "event": "open_verified"
+    },
+    {
+      "event": "mutation"
+    },
+    {
+      "event": "native_review_passed"
+    },
+    {
+      "event": "cross_review_passed"
+    },
+    {
+      "event": "godot_run_started"
+    },
+    {
+      "event": "godot_shutdown_clean"
+    },
+    {
+      "event": "commit_authorized"
+    },
+    {
+      "event": "commit_completed"
+    },
+    {
+      "event": "completion_commented"
+    },
+    {
+      "event": "child_closed"
+    },
+    {
+      "event": "sprint_reconciled"
+    }
   ]
 }

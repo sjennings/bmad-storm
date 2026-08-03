@@ -174,9 +174,12 @@ outside this contract; these tracker and execution gates do not.
    `storm-cross-review` loop as applicable. Findings are fixed or explicitly
    rebutted; each fix requires a complete fresh review pass bounded by
    `review_loop_max_rounds`.
-7. **Close.** After a clean exit and completion record, `storm-linear close`
-   moves the target to `Done`.
-8. **Reconcile once for a story only.** If the target is the story issue, invoke
+7. **Prove clean Godot shutdown.** Inspect targeted and full-suite shutdown output.
+   Any RID/Canvas/ObjectDB leak, orphan/stray node, or resource still in use is a
+   blocker even with exit code zero; fix and rerun before commit/close.
+8. **Close.** After a clean exit, verified task commit, and completion record,
+   `storm-linear close` moves the target to `Done`.
+9. **Reconcile once for a story only.** If the target is the story issue, invoke
    exactly one planner reconciliation. If the target is a child ticket, invoke
    no planner reconciliation and never close, mutate, or reconcile the parent
    story. A child close remains a child close.

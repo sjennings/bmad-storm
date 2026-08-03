@@ -90,6 +90,8 @@ def validate_transcript(
 
     state = contract["states"]["initial"]
     opened_target = None
+    godot_shutdown_clean = False
+    godot_run_outstanding = False
     commit_authorized = False
     commit_completed = False
     fix_count = 0
@@ -113,10 +115,31 @@ def validate_transcript(
             return errors
 
         guard = entry.get("guard")
+        if name == "godot_run_started" and godot_run_outstanding:
+            errors.append(
+                f"{label}: godot_run_started while another Godot run is already outstanding"
+            )
+            return errors
+        if name == "godot_shutdown_clean" and not godot_run_outstanding:
+            errors.append(
+                f"{label}: godot_shutdown_clean without a matching godot_run_started"
+            )
+            return errors
+        if name == "commit_authorized" and (commit_authorized or commit_completed):
+            errors.append(
+                f"{label}: commit_authorized requires no existing authorization or completed commit for the current snapshot"
+            )
+            return errors
         if guard == "review_round_cap" and fix_count + 2 > max_rounds:
             errors.append(
                 f"{label}: fix_applied would exceed review_loop_max_rounds "
                 f"({max_rounds}); only review_halted_non_converged may follow"
+            )
+            return errors
+        if guard == "godot_shutdown_clean_seen" and not godot_shutdown_clean:
+            errors.append(
+                f"{label}: commit_authorized without prior godot_shutdown_clean; "
+                "Godot RID/ObjectDB/orphan/resource leaks are blockers and the target must stay In Progress"
             )
             return errors
         if guard == "commit_authorized_seen" and not commit_authorized:
@@ -124,12 +147,19 @@ def validate_transcript(
                 f"{label}: commit_completed without a prior commit_authorized event"
             )
             return errors
-        if guard == "commit_completed_seen" and not commit_completed:
-            errors.append(
-                f"{label}: completion_commented without a completed commit; "
-                "commit authority alone is insufficient — the issue must stay In Progress"
-            )
-            return errors
+        if guard == "completion_evidence_current":
+            if not godot_shutdown_clean:
+                errors.append(
+                    f"{label}: completion_commented without fresh godot_shutdown_clean evidence; "
+                    "a later Godot run or fix invalidates earlier evidence and the target must stay In Progress"
+                )
+                return errors
+            if not commit_completed:
+                errors.append(
+                    f"{label}: completion_commented without a completed commit for the current snapshot; "
+                    "commit authority alone is insufficient — the issue must stay In Progress"
+                )
+                return errors
         if guard == "story_target" and opened_target != "story":
             errors.append(
                 f"{label}: issue_closed requires an opened story target "
@@ -152,15 +182,29 @@ def validate_transcript(
                 )
                 return errors
             opened_target = target
+        if name == "godot_run_started":
+            godot_run_outstanding = True
+            godot_shutdown_clean = False
+        if name == "godot_shutdown_clean":
+            godot_run_outstanding = False
+            godot_shutdown_clean = True
         if name == "commit_authorized":
             commit_authorized = True
         if name == "commit_completed":
+            commit_authorized = False
             commit_completed = True
         if name == "fix_applied":
             fix_count += 1
+            godot_shutdown_clean = False
+            commit_authorized = False
+            commit_completed = False
 
         state = state if entry["to"] == "self" else entry["to"]
 
+    if godot_run_outstanding:
+        errors.append(
+            "transcript ended with an unmatched godot_run_started; the target must stay In Progress"
+        )
     return errors
 
 

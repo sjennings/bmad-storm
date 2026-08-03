@@ -22,7 +22,7 @@ Per protocol §1: the diff; the spec's acceptance criteria and constraints; the 
 1. Tier 2 only by default — select and run the cross-model roster exactly as specified by protocol §3 (tier 1 already ran inside `bmad-code-review`). If invoked standalone (no native pass this session), run tier 1 lenses (`adversarial`, `edge-case-hunter`, `verification-gap`) first, per protocol §2.
 2. Merge Tier 2 findings from either backend with the native pass's findings per protocol §5 — dedupe across passes, rank up findings independently confirmed by multiple model families.
 3. Present the combined triage. Every actionable finding is fixed or explicitly rebutted with a reason.
-4. After fixes: re-run build and the full test suite, then loop per protocol §6 — a complete fresh panel pass over the fixed diff using the selected backend, up to `review_loop_max_rounds`. Exit clean, or halt and report non-convergence. These merge, loop, and close-out rules apply identically to Polytoken model subagents and external CLI reviewers.
+4. After fixes: re-run build and the full test suite, inspect Godot shutdown output, then loop per protocol §6 — a complete fresh panel pass over the fixed diff using the selected backend, up to `review_loop_max_rounds`. Any RID/Canvas/ObjectDB leak, orphan/stray node, or resource still in use blocks a clean exit even when tests return zero. Exit clean, or halt and report non-convergence. These merge, loop, and close-out rules apply identically to Polytoken model subagents and external CLI reviewers.
 
 ## Contract with close-out
 

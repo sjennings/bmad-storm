@@ -26,7 +26,7 @@ A **seam** is the public boundary you test at: the interface where you observe b
 - Unit tests go in the corresponding source-area subtree under `tests/`, named `Method_Condition_ExpectedResult`.
 - Random behavior takes an injected `IRandom`; tests use deterministic scripted draws — never live randomness in a test.
 - Use scenario bundles under `data/scenarios/` and treat `tests/fixtures/` and visual-test scenarios as evidence anchors; frozen fixtures change only when the story requires reviewed updates.
-- `dotnet build` (zero warnings) before any test run; targeted gdUnit4 suite for the loop, full suite before completion.
+- `dotnet build` (zero warnings) before any test run; targeted gdUnit4 suite for the loop, full suite before completion. Inspect Godot shutdown output: any RID/Canvas/ObjectDB leak, orphan/stray node, or resource still in use is a blocker even when the test exit code is zero; fix and rerun before completion.
 - Expected failures use `Result<T, LoadError>` / typed results — test the typed failure path, don't assert on exceptions for expected conditions.
 
 ## Anti-patterns

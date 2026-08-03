@@ -82,6 +82,8 @@ class StormBuildWrapperTests(unittest.TestCase):
             "plan -> review -> handoff_plan -> active goal -> execute -> read_goal",
             "Invoke `bmad-build` with an explicit implementation request",
             "After the Build/native review completes, invoke `storm-cross-review`",
+            "Any RID allocation leak, Canvas/CanvasItem RID leak, ObjectDB",
+            "`godot_shutdown_clean` only when those diagnostics are absent",
             "exactly one task-scoped completion commit",
             "Only after the commit is complete invoke `storm-linear close`",
             "If the target is the story issue, call sprint planning exactly once",

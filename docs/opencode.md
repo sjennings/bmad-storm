@@ -122,9 +122,10 @@ coordinator. It does not install or globally configure OpenCode or OMO-Slim.
    verified may the coordinator dispatch a bounded writer. Apply the configured
    `storm-tdd` seams, then run the native Build review and the existing
    `storm-cross-review` loop as configured. Every fix requires a fresh review
-   pass. Respect the explicit completion commit policy; never let a worker
-   commit or close independently.
-6. **Close and reconcile.** After a clean review and completion record,
+   pass. Inspect Godot shutdown output: any RID/Canvas/ObjectDB leak,
+   orphan/stray node, or resource still in use blocks completion even with exit
+   code zero. Fix and rerun; workers never commit or close independently.
+6. **Close and reconcile.** After a clean review, verified task commit, and completion record,
    `storm-linear close` moves the target to `Done`. The wrapper makes exactly
    one `bmad-sprint-planning` reconciliation for a story target. A child-ticket
    target gets no planner reconciliation and never closes or changes its parent

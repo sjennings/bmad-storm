@@ -1,32 +1,93 @@
 {
   "scenario": "Full story lifecycle with one review fix round, authorized commit, close, reconcile",
   "events": [
-    {"event": "scope_resolved"},
-    {"event": "grill_confirmed"},
-    {"event": "spec_review_completed"},
-    {"event": "publish_succeeded"},
-    {"event": "sprint_ready_updated"},
-    {"event": "plan_created"},
-    {"event": "plan_reviewed"},
-    {"event": "handoff_approved"},
-    {"event": "execute_entered"},
-    {"event": "goal_verified"},
-    {"event": "issue_opened", "target": "story"},
-    {"event": "open_verified"},
-    {"event": "mutation"},
-    {"event": "seam_confirmed"},
-    {"event": "red_evidence"},
-    {"event": "green_evidence"},
-    {"event": "native_review_passed"},
-    {"event": "finding_dispositioned"},
-    {"event": "fix_applied"},
-    {"event": "mutation"},
-    {"event": "native_review_passed"},
-    {"event": "cross_review_passed"},
-    {"event": "commit_authorized"},
-    {"event": "commit_completed"},
-    {"event": "completion_commented"},
-    {"event": "issue_closed"},
-    {"event": "sprint_reconciled"}
+    {
+      "event": "scope_resolved"
+    },
+    {
+      "event": "grill_confirmed"
+    },
+    {
+      "event": "spec_review_completed"
+    },
+    {
+      "event": "publish_succeeded"
+    },
+    {
+      "event": "sprint_ready_updated"
+    },
+    {
+      "event": "plan_created"
+    },
+    {
+      "event": "plan_reviewed"
+    },
+    {
+      "event": "handoff_approved"
+    },
+    {
+      "event": "execute_entered"
+    },
+    {
+      "event": "goal_verified"
+    },
+    {
+      "event": "issue_opened",
+      "target": "story"
+    },
+    {
+      "event": "open_verified"
+    },
+    {
+      "event": "mutation"
+    },
+    {
+      "event": "seam_confirmed"
+    },
+    {
+      "event": "red_evidence"
+    },
+    {
+      "event": "green_evidence"
+    },
+    {
+      "event": "native_review_passed"
+    },
+    {
+      "event": "finding_dispositioned"
+    },
+    {
+      "event": "fix_applied"
+    },
+    {
+      "event": "mutation"
+    },
+    {
+      "event": "native_review_passed"
+    },
+    {
+      "event": "cross_review_passed"
+    },
+    {
+      "event": "godot_run_started"
+    },
+    {
+      "event": "godot_shutdown_clean"
+    },
+    {
+      "event": "commit_authorized"
+    },
+    {
+      "event": "commit_completed"
+    },
+    {
+      "event": "completion_commented"
+    },
+    {
+      "event": "issue_closed"
+    },
+    {
+      "event": "sprint_reconciled"
+    }
   ]
 }

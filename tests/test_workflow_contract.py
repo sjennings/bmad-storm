@@ -193,8 +193,14 @@ class ContractStructureTests(unittest.TestCase):
         self.assertNotIn("completion_commit_policy:", MODULE)
         self.assertNotIn("allow-without-storm-commit", MODULE)
         close = CONTRACT["operations"]["storm-linear.close"]
+        self.assertIn("godot_shutdown_clean", close["preconditions"])
         self.assertIn("commit_completed", close["preconditions"])
-        self.assertIn("completed commit", CONTRACT["guards"]["commit_completed_seen"])
+        self.assertIn("RID", CONTRACT["guards"]["godot_shutdown_clean_seen"])
+        self.assertIn("ObjectDB", CONTRACT["guards"]["godot_shutdown_clean_seen"])
+        self.assertIn("resources still in use", CONTRACT["guards"]["godot_shutdown_clean_seen"])
+        completion_guard = CONTRACT["guards"]["completion_evidence_current"]
+        self.assertIn("godot_shutdown_clean", completion_guard)
+        self.assertIn("completed commit", completion_guard)
 
     def test_enforcement_level_is_honest_about_directive_control(self):
         enforcement = CONTRACT["enforcement"]
@@ -405,6 +411,132 @@ class TranscriptFixtureTests(unittest.TestCase):
         events, _, _ = load_fixture(FIXTURES / "invalid_child_reconciles_parent.json")
         errors = VALIDATOR.validate_transcript(events, CONTRACT)
         self.assertIn("sprint_reconciled", errors[0])
+
+    def test_godot_shutdown_leaks_block_commit_and_close(self):
+        events, _, _ = load_fixture(FIXTURES / "valid_full_story.json")
+        events = [event for event in events if event["event"] != "godot_shutdown_clean"]
+        errors = VALIDATOR.validate_transcript(events, CONTRACT)
+        self.assertTrue(errors)
+        self.assertIn("godot_shutdown_clean", errors[0])
+        self.assertIn("In Progress", errors[0])
+
+    def test_fix_after_clean_shutdown_requires_fresh_shutdown_evidence(self):
+        events, _, _ = load_fixture(FIXTURES / "valid_full_story.json")
+        commit_index = next(
+            index for index, event in enumerate(events)
+            if event["event"] == "commit_authorized"
+        )
+        events[commit_index:commit_index] = [
+            {"event": "fix_applied"},
+            {"event": "native_review_passed"},
+            {"event": "cross_review_passed"},
+        ]
+        errors = VALIDATOR.validate_transcript(events, CONTRACT)
+        self.assertTrue(errors)
+        self.assertIn("godot_shutdown_clean", errors[0])
+        self.assertIn("In Progress", errors[0])
+
+    def test_later_godot_run_requires_its_own_clean_shutdown(self):
+        events, _, _ = load_fixture(FIXTURES / "valid_full_story.json")
+        commit_index = next(
+            index for index, event in enumerate(events)
+            if event["event"] == "commit_authorized"
+        )
+        events.insert(commit_index, {"event": "godot_run_started"})
+        errors = VALIDATOR.validate_transcript(events, CONTRACT)
+        self.assertTrue(errors)
+        self.assertIn("godot_shutdown_clean", errors[0])
+        self.assertIn("In Progress", errors[0])
+
+    def test_fix_after_completed_commit_requires_a_fresh_commit(self):
+        events, _, _ = load_fixture(FIXTURES / "valid_full_story.json")
+        completion_index = next(
+            index for index, event in enumerate(events)
+            if event["event"] == "completion_commented"
+        )
+        events[completion_index:completion_index] = [
+            {"event": "fix_applied"},
+            {"event": "native_review_passed"},
+            {"event": "cross_review_passed"},
+            {"event": "godot_run_started"},
+            {"event": "godot_shutdown_clean"},
+        ]
+        errors = VALIDATOR.validate_transcript(events, CONTRACT)
+        self.assertTrue(errors)
+        self.assertIn("completed commit", errors[0])
+        self.assertIn("In Progress", errors[0])
+
+    def test_godot_run_after_completed_commit_requires_fresh_shutdown(self):
+        events, _, _ = load_fixture(FIXTURES / "valid_full_story.json")
+        completion_index = next(
+            index for index, event in enumerate(events)
+            if event["event"] == "completion_commented"
+        )
+        events.insert(completion_index, {"event": "godot_run_started"})
+        errors = VALIDATOR.validate_transcript(events, CONTRACT)
+        self.assertTrue(errors)
+        self.assertIn("godot_shutdown_clean", errors[0])
+        self.assertIn("In Progress", errors[0])
+
+    def test_godot_shutdown_evidence_requires_one_to_one_start_pairing(self):
+        events, _, _ = load_fixture(FIXTURES / "valid_full_story.json")
+        without_start = [event for event in events if event["event"] != "godot_run_started"]
+        errors = VALIDATOR.validate_transcript(without_start, CONTRACT)
+        self.assertTrue(errors)
+        self.assertIn("without a matching godot_run_started", errors[0])
+
+        start_index = next(
+            index for index, event in enumerate(events)
+            if event["event"] == "godot_run_started"
+        )
+        duplicate_start = list(events)
+        duplicate_start.insert(start_index, {"event": "godot_run_started"})
+        errors = VALIDATOR.validate_transcript(duplicate_start, CONTRACT)
+        self.assertTrue(errors)
+        self.assertIn("already outstanding", errors[0])
+
+        clean_index = next(
+            index for index, event in enumerate(events)
+            if event["event"] == "godot_shutdown_clean"
+        )
+        duplicate_clean = list(events)
+        duplicate_clean.insert(clean_index, {"event": "godot_shutdown_clean"})
+        errors = VALIDATOR.validate_transcript(duplicate_clean, CONTRACT)
+        self.assertTrue(errors)
+        self.assertIn("without a matching godot_run_started", errors[0])
+
+    def test_godot_run_pair_is_valid_during_implementation(self):
+        events, _, _ = load_fixture(FIXTURES / "valid_full_story.json")
+        mutation_index = next(
+            index for index, event in enumerate(events)
+            if event["event"] == "mutation"
+        )
+        events[mutation_index + 1:mutation_index + 1] = [
+            {"event": "godot_run_started"},
+            {"event": "godot_shutdown_clean"},
+        ]
+        self.assertEqual([], VALIDATOR.validate_transcript(events, CONTRACT))
+
+    def test_commit_authorization_is_single_use(self):
+        events, _, _ = load_fixture(FIXTURES / "valid_full_story.json")
+        commit_index = next(
+            index for index, event in enumerate(events)
+            if event["event"] == "commit_completed"
+        )
+        events.insert(commit_index + 1, {"event": "commit_completed"})
+        errors = VALIDATOR.validate_transcript(events, CONTRACT)
+        self.assertTrue(errors)
+        self.assertIn("without a prior commit_authorized", errors[0])
+
+        events, _, _ = load_fixture(FIXTURES / "valid_full_story.json")
+        authority_index = next(
+            index for index, event in enumerate(events)
+            if event["event"] == "commit_authorized"
+        )
+        events.insert(authority_index, {"event": "commit_authorized"})
+        errors = VALIDATOR.validate_transcript(events, CONTRACT)
+        self.assertTrue(errors)
+        self.assertIn("existing authorization", errors[0])
 
     def test_commit_requires_explicit_authority(self):
         events, _, _ = load_fixture(FIXTURES / "invalid_commit_without_authority.json")

@@ -132,6 +132,11 @@ Recorded during the v0.4.0 development gates against the actual target runtime
   open verified → mutation.
 - Review rounds come only from `review_loop_max_rounds`; fixes require a complete
   fresh review pass; non-convergence leaves the issue `In Progress`.
+- Godot shutdown cleanliness is a completion gate, not advisory output. Any RID
+  allocation leak, Canvas/CanvasItem RID leak, ObjectDB leaked instance,
+  orphan/stray node, or resource still in use blocks commit and close even when
+  the test process exits zero; fix it and rerun before recording
+  `godot_shutdown_clean`.
 - The explicit `storm-build implement` request authorizes exactly one
   task-scoped completion commit after clean verification; it does not authorize
   push. The commit must be created and verified before the completion comment or
@@ -286,17 +291,21 @@ contract. A transcript is a JSON object:
   every implementation close requires a completed commit.
 - `issue_opened` carries `target: "story" | "child"`; close guards match
   against it.
+- Every completion-relevant Godot process is one exact pair:
+  `godot_run_started` then `godot_shutdown_clean`. Only one run may be outstanding;
+  pairs are valid during implementation, native review, and clean review.
+  `commit_authorized` is a single-use token consumed by one `commit_completed`.
 - Event vocabulary (defined in `transitions` in the contract) includes
   `scope_resolved`, `grill_confirmed`, `spec_review_completed`,
   `publish_succeeded`, `publish_failed`, `sprint_ready_updated`,
-  `slice_completed`, `plan_created`, `plan_reviewed`, `handoff_approved`,
+  `planner_readiness_failed`, `slice_completed`, `plan_created`, `plan_reviewed`, `handoff_approved`,
   `handoff_rejected`, `handoff_cancelled`, `execute_entered`, `goal_verified`,
   `issue_opened`, `open_verified`, `mutation`, `seam_confirmed`, `red_evidence`,
   `green_evidence`, `native_review_passed`, `cross_review_passed`,
   `finding_dispositioned`, `fix_applied`, `review_halted_non_converged`,
-  `commit_authorized`, `commit_completed`, `completion_commented`,
-  `issue_closed`, `child_closed`, `sprint_reconciled`, and
-  `child_roll_up_reported`.
+  `godot_run_started`, `godot_shutdown_clean`, `commit_authorized`, `commit_completed`, `completion_commented`,
+  `issue_closed`, `child_closed`, `planner_reconciliation_failed`,
+  `sprint_reconciled`, and `child_roll_up_reported`.
 - The validator stops at the first violation and reports the event index, the
   state, and the rule. Run it directly:
   `python3 skills/storm-contract/validate_transcript.py <transcript.json>`;
@@ -311,6 +320,7 @@ rejected or cancelled handoff leaves `Todo` and blocks mutation; absent goal
 blocks open; pre-open mutation is rejected; failed open verification blocks
 mutation; child-ticket close never closes or reconciles the parent; review fixes
 require a complete fresh pass; max-round non-convergence leaves `In Progress`;
+Godot shutdown leaks block commit/close even when the test exit code is zero;
 commit without explicit authority is rejected; and story close comments before
 `Done` then reconciles. Planner call counts and direct Build unwrapped behavior
 are wrapper smoke checks, not claims about the upstream renderer.

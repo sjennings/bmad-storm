@@ -101,9 +101,11 @@ not claim an upstream BMAD Polytoken tool identifier. Upstream BMAD has no
    lanes wait for terminal job results.
 6. **Review, commit, and close.** Run the native Build review and the existing
    `storm-cross-review` panel as configured. Fixes require a complete fresh pass
-   within `review_loop_max_rounds`. The completion commit policy still requires
-   explicit authority; no worker commits or closes independently. After a clean
-   result and completion record, the owning session calls `storm-linear close`.
+   within `review_loop_max_rounds`. Inspect Godot shutdown output after targeted
+   and full runs: any RID/Canvas/ObjectDB leak, orphan/stray node, or resource
+   still in use blocks completion even with exit code zero. Fix and rerun before
+   the owning session creates the task commit and calls `storm-linear close`;
+   no worker commits or closes independently.
 7. **Reconcile the correct target.** For a story target, the wrapper makes
    exactly one `bmad-sprint-planning` reconciliation after Linear reaches `Done`.
    For a child-ticket target, it makes no planner reconciliation and never closes,

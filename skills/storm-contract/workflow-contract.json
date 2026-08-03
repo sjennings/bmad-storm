@@ -115,7 +115,7 @@
     "storm-tdd": {"kind": "canonical", "phase": "implementation", "authority": "linear", "effects": ["test-first at confirmed seams"]},
     "bmad-code-review": {"kind": "canonical", "phase": "review", "authority": "upstream", "standalone": true, "preferred_entry": "storm-build validate", "effects": ["native adversarial review"]},
     "storm-cross-review": {"kind": "canonical", "phase": "review", "authority": "linear", "effects": ["cross-model panel triage"], "round_cap_setting": "review_loop_max_rounds"},
-    "storm-linear.close": {"kind": "canonical", "phase": "close", "authority": "linear", "preconditions": ["review_clean", "commit_authorized", "commit_completed", "completion_commented"], "effects": ["completion record", "Done"], "caller_responsibility": "storm-build decides whether to perform exactly one planner reconciliation call", "writes_sprint_status": false, "invokes_planner": false},
+    "storm-linear.close": {"kind": "canonical", "phase": "close", "authority": "linear", "preconditions": ["review_clean", "godot_shutdown_clean", "commit_authorized", "commit_completed", "completion_commented"], "effects": ["completion record", "Done"], "caller_responsibility": "storm-build decides whether to perform exactly one planner reconciliation call", "writes_sprint_status": false, "invokes_planner": false},
     "storm-reconcile": {"kind": "canonical", "phase": "hygiene", "authority": "phase-decides", "effects": ["drift report", "approved fixes only"], "requests": ["operator handoff: bmad-sprint-planning repair intent"], "writes_sprint_status": false, "invokes_planner": false},
     "bmad-retrospective": {"kind": "advisory", "phase": "hygiene", "authority": "operator", "effects": ["sourced findings", "aggregate refactor proposals"], "writes": [], "follow_up": ["bmad-correct-course", "storm-harness-improvement"]},
     "storm-harness-improvement": {"kind": "canonical", "phase": "hygiene", "authority": "operator", "effects": ["harness change proposals"]}
@@ -226,11 +226,13 @@
     {"event": "native_review_passed", "from": ["implementing"], "to": "native_reviewed"},
     {"event": "cross_review_passed", "from": ["native_reviewed"], "to": "review_clean"},
     {"event": "finding_dispositioned", "from": ["native_reviewed", "review_clean"], "to": "self"},
-    {"event": "fix_applied", "from": ["native_reviewed", "review_clean"], "to": "implementing", "guard": "review_round_cap", "note": "Every fix requires a complete fresh review pass: native_review_passed and cross_review_passed must both recur before close."},
+    {"event": "fix_applied", "from": ["native_reviewed", "review_clean"], "to": "implementing", "guard": "review_round_cap", "note": "Every fix invalidates prior shutdown-clean, commit-authorization, and completed-commit evidence. A complete fresh review pass, clean Godot shutdown, and newly authorized completed task commit must all recur before close."},
     {"event": "review_halted_non_converged", "from": ["implementing", "native_reviewed", "review_clean"], "to": "halted_in_progress"},
-    {"event": "commit_authorized", "from": ["review_clean"], "to": "review_clean", "note": "The explicit storm-build implement invocation grants bounded authority for exactly one task-scoped completion commit after clean verification; push remains separately authorized."},
+    {"event": "godot_run_started", "from": ["implementing", "native_reviewed", "review_clean"], "to": "self", "note": "Emit before every completion-relevant Godot process. Only one run may be outstanding; each start invalidates earlier shutdown-clean evidence until its matching clean exit."},
+    {"event": "godot_shutdown_clean", "from": ["implementing", "native_reviewed", "review_clean"], "to": "self", "note": "Consumes exactly one preceding unmatched godot_run_started after shutdown output is inspected. Any crash, hang, RID allocation leak, Canvas/CanvasItem RID leak, ObjectDB leaked instance, orphan/stray node, or resource still in use is a completion blocker and must be fixed."},
+    {"event": "commit_authorized", "from": ["review_clean"], "to": "review_clean", "guard": "godot_shutdown_clean_seen", "note": "The explicit storm-build implement invocation grants bounded authority for exactly one task-scoped completion commit after clean verification; push remains separately authorized."},
     {"event": "commit_completed", "from": ["review_clean"], "to": "review_clean", "guard": "commit_authorized_seen"},
-    {"event": "completion_commented", "from": ["review_clean"], "to": "close_ready", "guard": "commit_completed_seen", "note": "A successfully completed authorized commit is mandatory. After it exists, the completion record (what shipped, verification actually run, declined findings with reasons, deferred follow-ups) is commented BEFORE any state change."},
+    {"event": "completion_commented", "from": ["review_clean"], "to": "close_ready", "guard": "completion_evidence_current", "note": "Fresh clean-shutdown evidence and a successfully completed authorized commit for the current code snapshot are mandatory. The completion record (what shipped, verification actually run, declined findings with reasons, deferred follow-ups) is commented BEFORE any state change."},
     {"event": "issue_closed", "from": ["close_ready"], "to": "done", "guard": "story_target"},
     {"event": "child_closed", "from": ["close_ready"], "to": "child_done", "guard": "child_target"},
     {"event": "planner_reconciliation_failed", "from": ["done"], "to": "done", "note": "Linear remains Done; the one storm-build planner reconciliation call failed and repair is required."},
@@ -239,8 +241,9 @@
   ],
   "guards": {
     "review_round_cap": "fix_applied is allowed only while the fresh pass it triggers stays within review_loop_max_rounds: fix_count + 2 <= max_rounds. Past the cap the only valid review exit is review_halted_non_converged, which leaves the issue In Progress.",
-    "commit_authorized_seen": "commit_completed requires a prior commit_authorized event in the same transcript. No commit without explicit authority.",
-    "commit_completed_seen": "completion_commented requires a prior successfully completed commit (the commit_completed event), which itself requires prior commit_authorized. Every story or child ticket must be committed before it can be marked Done; absent authority or a failed commit leaves it In Progress.",
+    "godot_shutdown_clean_seen": "commit_authorized requires fresh godot_shutdown_clean evidence from exactly one matched godot_run_started/godot_shutdown_clean pair, with no run outstanding. Godot verification pairs are valid during implementing, native_reviewed, and review_clean. Any later fix or Godot run invalidates earlier evidence until that run exits clean. A crash, hang, RID allocation leak, Canvas/CanvasItem RID leak, ObjectDB leaked instance, orphan/stray node, or resources still in use diagnostic is a blocker that must be fixed; the target remains In Progress.",
+    "commit_authorized_seen": "commit_completed consumes one prior unconsumed commit_authorized event. A second commit requires fresh authority only after fix_applied invalidates the prior snapshot; no reusable or duplicate completion authority.",
+    "completion_evidence_current": "completion_commented requires both fresh godot_shutdown_clean evidence and a successfully completed commit for the current code snapshot. godot_run_started invalidates only shutdown evidence; fix_applied invalidates shutdown, commit_authorized, and commit_completed evidence. Every later fix therefore requires fresh review, clean shutdown, and a newly authorized completed task commit. Missing or stale evidence leaves the target In Progress.",
     "story_target": "issue_closed requires the opened target to be a story issue.",
     "child_target": "child_closed requires the opened target to be a child ticket. Child sessions never mutate, close, or reconcile the parent story."
   },
@@ -248,6 +251,7 @@
     "round_cap_setting": "review_loop_max_rounds",
     "fresh_pass_required_after_fix": true,
     "non_convergence": "leave the issue In Progress and report outstanding items",
+    "godot_shutdown_leaks": "Any RID allocation, Canvas/CanvasItem, ObjectDB, orphan/stray-node, or resource-still-in-use diagnostic blocks completion even when tests exit zero; fix and rerun before godot_shutdown_clean.",
     "single_triage": "The generic three-lens reviewer is only an implementation detail feeding the single native-plus-cross-review triage and loop."
   },
   "child_story_rules": {
@@ -264,6 +268,7 @@
     "absent active saved goal after handoff blocks storm-linear open",
     "failed or unverified open blocks implementation mutation",
     "review non-convergence at review_loop_max_rounds leaves the issue In Progress",
+    "any Godot RID/Canvas/ObjectDB/orphan/resource leak leaves the issue In Progress even when tests exit zero",
     "a failed or unverified completion commit leaves the issue In Progress",
     "non-clean exit of any kind leaves the issue In Progress and is reported explicitly"
   ]

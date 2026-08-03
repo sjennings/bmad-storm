@@ -47,7 +47,10 @@ it out; say so in the run log.
 
 **`close <story-key-or-issue>`** — implementation end, only after a clean exit:
 native Build review plus storm-cross-review clean, build and full suite green,
-and the task-scoped completion commit created and verified. `storm-build
+Godot shutdown output free of RID/Canvas/ObjectDB/orphan/resource leaks, and the
+task-scoped completion commit created and verified. A zero test exit code does
+not waive a shutdown leak; any such diagnostic leaves the target `In Progress`.
+`storm-build
 implement` grants its execute session authority for exactly that one commit;
 workers never commit independently, and push still requires separate authority.
 Comment the completion record on the issue **before** changing state: what
