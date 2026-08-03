@@ -157,7 +157,7 @@ Common rules:
 - Specialists never commit, push, publish, open, close, reconcile, rescope, complete/block the saved goal, or close a parent story. They cannot spawn subagents.
 - Writers are dispatch-only from an approved execute context: the coordinator must have verified `read_goal` and Linear `In Progress` first, and the dispatch prompt must supply objective, acceptance criteria, exact ownership, dependencies, exclusions, allowed edits, and validation. Missing any of that → `rejected-fit`, reroute or ask the operator, never redispatch unchanged.
 - `shell_exec` is denied in the shipped writer definitions. If an approved task genuinely requires the worker to run validation commands, the coordinator runs them, or the operator approves a project-local role variant under ask/deny-gated permissions. No silent widening.
-- After any Polytoken or Linear MCP update, enumerate the server's mutation tools and confirm the writer deny lists still cover them (`storm-doctor` flags known gaps statically; live enumeration is an operator-session check).
+- After any Polytoken or linear-cli update, inspect the CLI mutation commands and confirm writer roles still deny `shell_exec` and `shell_monitor` (`storm-doctor` checks this statically; the live CLI audit is an operator-session check).
 
 ## Orchestration: lanes, the scheduler, and native state
 
@@ -265,7 +265,7 @@ Prompt-security hardening applies throughout: never read secret values (check ex
 ## Migration from v0.3.0
 
 1. Upgrade/install v0.5.0 through the BMAD module installer.
-2. Review the new install prompts and defaults (`polytoken_team_profile`, `polytoken_role_model_overrides`, `polytoken_council_models`, `polytoken_max_parallel_jobs`, `polytoken_continue_on_idle` — off by default; `completion_commit_policy` — `require-explicit` by default).
+2. Review the new install prompts and defaults (`polytoken_team_profile`, `polytoken_role_model_overrides`, `polytoken_council_models`, `polytoken_max_parallel_jobs`, `polytoken_continue_on_idle` — off by default). Implementation completion now always requires one verified task-scoped commit before Linear `Done`; push remains separately authorized.
 3. Run `> use the storm-setup skill` and approve the managed projections.
 4. Run `/reload`.
 5. Run `storm-doctor` and `storm-setup check`; review the ownership manifest before enabling writers or continuation.

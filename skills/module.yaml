@@ -1,6 +1,6 @@
 code: storm
 name: "August Storm Harness"
-description: "Project harness for August Storm on BMAD: explicit storm-build lifecycle wrapper around unwrapped upstream bmad-build, Linear phase-split source of truth, grilling interviews, cross-model spec/code review panels, tracker drift reconciliation, and a proposal-only harness improvement loop. Requires the BMad Method (bmm) module and a configured linear-server MCP."
+description: "Project harness for August Storm on BMAD: explicit storm-build lifecycle wrapper around unwrapped upstream bmad-build, Linear phase-split source of truth, grilling interviews, cross-model spec/code review panels, tracker drift reconciliation, and a proposal-only harness improvement loop. Requires the BMad Method (bmm) module and an installed, authenticated linear-cli."
 module_version: 0.5.0
 default_selected: false
 
@@ -19,9 +19,10 @@ module_greeting: >
   requires the BMad Method (bmm) module: _bmad/bmm/config.yaml and a
   sprint-status.yaml from bmad-sprint-planning. Re-run storm-setup after any
   BMAD update (`storm-setup check`) to confirm the wiring still lands. The
-  native OpenCode route additionally requires OMO-Slim to be already installed
-  and the linear-server MCP to be installed/configured; storm does not install,
-  duplicate, vendor, or globally configure either runtime or Linear credentials.
+  native OpenCode route additionally requires OMO-Slim to be already installed.
+  Every route requires `linear-cli` 0.3.27 or later to be installed and authenticated;
+  storm does not install, duplicate, vendor, or globally configure either runtime
+  or Linear credentials.
 
 # --- Install prompts -------------------------------------------------------
 
@@ -74,19 +75,6 @@ review_loop_max_rounds:
   scope: team
   default: "3"
   result: "{value}"
-
-completion_commit_policy:
-  prompt:
-    - "How should Storm handle completion when no explicit commit authority is available?"
-    - "require-explicit leaves the issue In Progress when commit authority is absent or denied; allow-without-storm-commit permits a clean close without a Storm-created commit."
-  scope: team
-  default: "require-explicit"
-  result: "{value}"
-  single-select:
-    - value: "require-explicit"
-      label: "Require explicit commit authority"
-    - value: "allow-without-storm-commit"
-      label: "Allow completion without a Storm-created commit"
 
 polytoken_team_profile:
   prompt: "Managed Polytoken specialist profile to activate for this project (quality, balanced, economy, or inherit)."

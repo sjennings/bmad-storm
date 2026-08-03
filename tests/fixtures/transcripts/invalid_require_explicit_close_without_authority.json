@@ -1,5 +1,5 @@
 {
-  "scenario": "Under require-explicit, close without commit authority is rejected",
+  "scenario": "Close without a completed commit is rejected",
   "events": [
     {"event": "scope_resolved"},
     {"event": "grill_confirmed"},

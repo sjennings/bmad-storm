@@ -89,11 +89,6 @@
       "default": 3,
       "rule": "The only source for the review round cap. Directives and templates must reference this setting, never a hard-coded number. Fixes require a complete fresh review pass; non-convergence at the cap leaves the issue In Progress and is reported."
     },
-    "completion_commit_policy": {
-      "default": "require-explicit",
-      "allowed": ["require-explicit", "allow-without-storm-commit"],
-      "rule": "No Storm role commits without explicit operator authority. Under require-explicit, close requires a completed authorized commit: absent or denied commit authority — or authority without a completed commit — leaves the issue In Progress and is reported; no directive may auto-commit. Under allow-without-storm-commit, close may proceed without a Storm-created commit, but commit_completed still always requires prior commit_authorized."
-    },
     "grill_on_implement": {
       "default": "gaps-only",
       "allowed": ["full", "gaps-only", "off"]
@@ -120,7 +115,7 @@
     "storm-tdd": {"kind": "canonical", "phase": "implementation", "authority": "linear", "effects": ["test-first at confirmed seams"]},
     "bmad-code-review": {"kind": "canonical", "phase": "review", "authority": "upstream", "standalone": true, "preferred_entry": "storm-build validate", "effects": ["native adversarial review"]},
     "storm-cross-review": {"kind": "canonical", "phase": "review", "authority": "linear", "effects": ["cross-model panel triage"], "round_cap_setting": "review_loop_max_rounds"},
-    "storm-linear.close": {"kind": "canonical", "phase": "close", "authority": "linear", "preconditions": ["review_clean", "completion_commented", "completion_commit_policy"], "effects": ["completion record", "Done"], "caller_responsibility": "storm-build decides whether to perform exactly one planner reconciliation call", "writes_sprint_status": false, "invokes_planner": false},
+    "storm-linear.close": {"kind": "canonical", "phase": "close", "authority": "linear", "preconditions": ["review_clean", "commit_authorized", "commit_completed", "completion_commented"], "effects": ["completion record", "Done"], "caller_responsibility": "storm-build decides whether to perform exactly one planner reconciliation call", "writes_sprint_status": false, "invokes_planner": false},
     "storm-reconcile": {"kind": "canonical", "phase": "hygiene", "authority": "phase-decides", "effects": ["drift report", "approved fixes only"], "requests": ["operator handoff: bmad-sprint-planning repair intent"], "writes_sprint_status": false, "invokes_planner": false},
     "bmad-retrospective": {"kind": "advisory", "phase": "hygiene", "authority": "operator", "effects": ["sourced findings", "aggregate refactor proposals"], "writes": [], "follow_up": ["bmad-correct-course", "storm-harness-improvement"]},
     "storm-harness-improvement": {"kind": "canonical", "phase": "hygiene", "authority": "operator", "effects": ["harness change proposals"]}
@@ -203,7 +198,7 @@
       "reconciled": "sprint-status.yaml reconciled to done under the story key (story close only).",
       "child_done": "Child ticket moved to Done; nothing reconciled; last child reports the story ready to close.",
       "halted_pre_open": "Handoff rejected/cancelled or no active goal; issue remains Todo; mutation forbidden.",
-      "halted_in_progress": "Non-clean exit (review non-converged, tests failing, denied commit authority); issue remains In Progress."
+      "halted_in_progress": "Non-clean exit (review non-converged, tests failing, or completion commit failed); issue remains In Progress."
     }
   },
   "transitions": [
@@ -233,9 +228,9 @@
     {"event": "finding_dispositioned", "from": ["native_reviewed", "review_clean"], "to": "self"},
     {"event": "fix_applied", "from": ["native_reviewed", "review_clean"], "to": "implementing", "guard": "review_round_cap", "note": "Every fix requires a complete fresh review pass: native_review_passed and cross_review_passed must both recur before close."},
     {"event": "review_halted_non_converged", "from": ["implementing", "native_reviewed", "review_clean"], "to": "halted_in_progress"},
-    {"event": "commit_authorized", "from": ["review_clean"], "to": "review_clean", "note": "Explicit operator authority; the only source of commit permission."},
+    {"event": "commit_authorized", "from": ["review_clean"], "to": "review_clean", "note": "The explicit storm-build implement invocation grants bounded authority for exactly one task-scoped completion commit after clean verification; push remains separately authorized."},
     {"event": "commit_completed", "from": ["review_clean"], "to": "review_clean", "guard": "commit_authorized_seen"},
-    {"event": "completion_commented", "from": ["review_clean"], "to": "close_ready", "guard": "close_policy", "note": "Completion record (what shipped, verification actually run, declined findings with reasons, deferred follow-ups) is commented BEFORE any state change."},
+    {"event": "completion_commented", "from": ["review_clean"], "to": "close_ready", "guard": "commit_completed_seen", "note": "A successfully completed authorized commit is mandatory. After it exists, the completion record (what shipped, verification actually run, declined findings with reasons, deferred follow-ups) is commented BEFORE any state change."},
     {"event": "issue_closed", "from": ["close_ready"], "to": "done", "guard": "story_target"},
     {"event": "child_closed", "from": ["close_ready"], "to": "child_done", "guard": "child_target"},
     {"event": "planner_reconciliation_failed", "from": ["done"], "to": "done", "note": "Linear remains Done; the one storm-build planner reconciliation call failed and repair is required."},
@@ -245,7 +240,7 @@
   "guards": {
     "review_round_cap": "fix_applied is allowed only while the fresh pass it triggers stays within review_loop_max_rounds: fix_count + 2 <= max_rounds. Past the cap the only valid review exit is review_halted_non_converged, which leaves the issue In Progress.",
     "commit_authorized_seen": "commit_completed requires a prior commit_authorized event in the same transcript. No commit without explicit authority.",
-    "close_policy": "completion_commented requires completion_commit_policy == allow-without-storm-commit or a prior successful commit_completed event (which itself requires a prior commit_authorized). Under require-explicit, commit authority without a completed commit — or absent/denied authority — halts with the issue In Progress.",
+    "commit_completed_seen": "completion_commented requires a prior successfully completed commit (the commit_completed event), which itself requires prior commit_authorized. Every story or child ticket must be committed before it can be marked Done; absent authority or a failed commit leaves it In Progress.",
     "story_target": "issue_closed requires the opened target to be a story issue.",
     "child_target": "child_closed requires the opened target to be a child ticket. Child sessions never mutate, close, or reconcile the parent story."
   },
@@ -269,7 +264,7 @@
     "absent active saved goal after handoff blocks storm-linear open",
     "failed or unverified open blocks implementation mutation",
     "review non-convergence at review_loop_max_rounds leaves the issue In Progress",
-    "denied or absent commit authority under require-explicit leaves the issue In Progress",
+    "a failed or unverified completion commit leaves the issue In Progress",
     "non-clean exit of any kind leaves the issue In Progress and is reported explicitly"
   ]
 }

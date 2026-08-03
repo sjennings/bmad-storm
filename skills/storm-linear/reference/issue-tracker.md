@@ -1,8 +1,8 @@
 # Issue tracker contract: Linear
 
 Issues and stories for this repo live in Linear, team **{linear_team}** (key
-`{linear_team_key}`). Use the `linear-server` MCP tools — there is no CLI for
-this tracker.
+`{linear_team_key}`). Use `linear-cli` 0.3.27 or later for every tracker read
+and write. Storm owns the workflow; the CLI is its transport.
 
 ## The three roles
 
@@ -62,27 +62,41 @@ a story.
   (`wave:*`, `project:*`, `mode:*`) predate the current roadmap — do not apply
   them to new work without checking they still mean something.
 
-## Conventions
+## CLI conventions
 
-- **Create**: `save_issue { team, title, description, project?, labels? }`
-- **Read**: `get_issue { id: "{linear_team_key}-123", includeRelations: true }`,
-  then `list_comments { issueId }`
-- **List**: `list_issues { team, state?, label?, project?, includeArchived: false }`
-- **Comment**: `save_comment { issueId, body }`
-- **Close**: `save_issue { id, state: "Done" }`. Use `Canceled` for won't-fix,
-  `duplicateOf` + `state: "Duplicate"` for duplicates.
+Preflight once per tracker operation:
+
+```bash
+linear-cli --version
+linear-cli auth status --output json --compact --no-pager
+linear-cli issues get "{linear_team_key}-123" \
+  --output json --compact --no-cache --no-pager
+```
+
+Authentication may come from `LINEAR_API_KEY`, OAuth, or the OS keyring. Check
+only `auth status`; never print the environment value or read token/config files.
+Use `--output json --compact --no-cache --no-pager` for reads and parse the JSON.
+The installed CLI may emit human text for mutation dry-runs despite JSON flags,
+so verify every write by rereading the affected issue, comments, or relations.
+
+- **Create**: `linear-cli issues create "$title" --team "{linear_team}" ...`
+- **Read**: `linear-cli issues get "{linear_team_key}-123" --output json --compact --no-cache --no-pager`, then `linear-cli comments list "{linear_team_key}-123" --output json --compact --no-cache --no-pager`
+- **List**: `linear-cli issues list --team "{linear_team}" ... --output json --compact --no-cache --no-pager`
+- **Update description/spec safely**: construct the JSON payload mechanically, then pipe it to `linear-cli issues update "$issue" --data - --output json --compact --no-pager`
+- **Comment**: `linear-cli issues comment "$issue" --body "$body" --no-pager`
+- **State**: `linear-cli issues update "$issue" --state "In Progress|Done|Canceled|Duplicate" --no-pager`
+- **Relations**: `linear-cli relations add "$from" "$to" --relation blocks`; parent with `linear-cli relations parent "$child" "$parent"`
+
+For multiline Markdown, keep literal newlines in the shell variable or JSON
+payload; never encode prose as `\n` escapes by hand. Quote every variable.
 
 ### Two traps
 
-1. **`labels` replaces the entire label set.** To *add* a label, `get_issue`
-   first and send the full intended array. Sending one label name strips every
-   other label on the issue.
-2. **`list_issues` defaults `includeArchived: true`.** Pass
-   `includeArchived: false` for any query about live work — a large archived
-   backlog will otherwise pollute results.
-
-Descriptions and comment bodies are Markdown: literal newlines, never `\n`
-escapes.
+1. **Issue-update labels replace the intended label set.** Before changing
+   labels, reread the issue and pass every label that must remain. Never use a
+   one-label update as an append operation.
+2. **Cached reads can conceal a just-completed write.** Verification reads use
+   `--no-cache`; a write is not complete until the fresh JSON reflects it.
 
 ## Publishing a story to Linear
 
@@ -122,13 +136,10 @@ blocked before implementation and requires planner repair.
 tickets, and it runs only against a published spec. Small stories skip it and
 are implemented straight from the spec.
 
-- **Create** each ticket as a **child issue** of the story issue, in dependency
-  order: `save_issue { team, title, parentId: "<story issue>", labels:
-  ["ready-for-agent", "type:task"] }`.
-- **Blocking**: native relations — `save_issue { id: "<ticket>", blockedBy:
-  [...] }`. Read with `get_issue { id, includeRelations: true }`; clear with
-  `removeBlockedBy`. A ticket is unblocked when every blocker sits in a
-  completed or canceled state.
+- **Create** each ticket in dependency order with `linear-cli issues create`,
+  then parent it using `linear-cli relations parent "$ticket" "$story"`.
+  Apply the complete `ready-for-agent` + `type:task` label set at creation.
+- **Blocking**: native relations — `linear-cli relations add "$blocker" "$ticket" --relation blocks`. Read with `linear-cli relations list "$ticket" --output json --compact --no-cache --no-pager`; clear with `linear-cli relations remove` using the exact installed help syntax. A ticket is unblocked when every blocker sits in a completed or canceled state.
 - **Execution**: implementors work the frontier (tickets whose blockers are
   all done) and move ticket state `In Progress` → `Done`. A ticket session
   never closes or modifies the parent story issue.
@@ -180,8 +191,4 @@ story, and the intake issue is closed as a duplicate of the published story.
 
 ## Fetching work
 
-`get_issue { id, includeRelations: true }` followed by `list_comments { issueId
-}`. If the issue is a child ticket, read the parent story issue too — the
-parent's description is the spec, and a ticket alone is not it. Legacy issues
-may carry a **Brief:** pointer to a retired on-disk file; if the file is gone,
-the issue's spec (or its published-spec comment) is the authority.
+Run `linear-cli issues get "$issue" --output json --compact --no-cache --no-pager`, `linear-cli comments list "$issue" --output json --compact --no-cache --no-pager`, and `linear-cli relations list "$issue" --output json --compact --no-cache --no-pager`. If the issue is a child ticket, fetch the parent story issue too — the parent's description is the spec, and a ticket alone is not it. Legacy issues may carry a **Brief:** pointer to a retired on-disk file; if the file is gone, the issue's spec (or its published-spec comment) is the authority.

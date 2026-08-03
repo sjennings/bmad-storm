@@ -13,6 +13,11 @@ DIRECT_OVERRIDE = ROOT / "skills/storm-setup/assets/overrides/bmad-build.toml"
 LINEAR = (ROOT / "skills/storm-linear/SKILL.md").read_text()
 RECONCILE = (ROOT / "skills/storm-reconcile/SKILL.md").read_text()
 SETUP = (ROOT / "skills/storm-setup/SKILL.md").read_text()
+MODULE = (ROOT / "skills/module.yaml").read_text()
+TRACKER = (ROOT / "skills/storm-linear/reference/issue-tracker.md").read_text()
+POLYTOKEN_VALIDATOR = (
+    ROOT / "skills/storm-setup/assets/polytoken/scripts/validate_polytoken_assets.py"
+).read_text()
 CODE_REVIEW = (ROOT / "skills/storm-setup/assets/overrides/bmad-code-review.toml").read_text()
 HELP = (ROOT / "skills/module-help.csv").read_text()
 
@@ -71,15 +76,17 @@ class StormBuildWrapperTests(unittest.TestCase):
 
     def test_implementation_route_orders_gates_and_limits_planner_to_story(self):
         implementation = section("## `storm-build implement", "## `storm-build validate")
+        normalized = " ".join(implementation.split())
         markers = (
             "explicit preflight grill",
             "plan -> review -> handoff_plan -> active goal -> execute -> read_goal",
             "Invoke `bmad-build` with an explicit implementation request",
             "After the Build/native review completes, invoke `storm-cross-review`",
-            "invoke `storm-linear close`",
+            "exactly one task-scoped completion commit",
+            "Only after the commit is complete invoke `storm-linear close`",
             "If the target is the story issue, call sprint planning exactly once",
         )
-        positions = [implementation.index(marker) for marker in markers]
+        positions = [normalized.index(marker) for marker in markers]
         self.assertEqual(sorted(positions), positions)
         self.assertIn(
             "If it is a child ticket, do not call sprint planning and never close or reconcile the parent",
@@ -89,7 +96,9 @@ class StormBuildWrapperTests(unittest.TestCase):
             "linear done with reconciliation repair required",
             " ".join(implementation.lower().split()),
         )
-        self.assertEqual(1, implementation.count("call sprint planning exactly once"))
+        self.assertEqual(1, normalized.count("call sprint planning exactly once"))
+        self.assertIn("it does not authorize push", normalized)
+        self.assertIn("A failed commit leaves the target `In Progress`", normalized)
 
     def test_validate_route_has_no_tracker_or_planner_lifecycle(self):
         validate = section("## `storm-build validate", "## Authority and failure reporting")
@@ -127,6 +136,26 @@ class StormBuildWrapperTests(unittest.TestCase):
         self.assertIn("storm-build` skill advertises exactly `author`, `implement`, and `validate`", SETUP)
         self.assertIn("Do not claim that rendered `bmad-build` exposes route-specific gates", SETUP)
         self.assertIn("non-empty scalar", SETUP)
+
+    def test_linear_transport_is_authenticated_cli_not_mcp(self):
+        combined = "\n".join((SETUP, MODULE, TRACKER, POLYTOKEN_VALIDATOR))
+        self.assertIn("linear-cli", SETUP)
+        self.assertIn("linear-cli", MODULE)
+        self.assertIn("linear-cli", TRACKER)
+        self.assertNotIn("linear-server", combined)
+        self.assertNotIn("LINEAR_MUTATION_TOOLS", POLYTOKEN_VALIDATOR)
+
+    def test_tracker_cli_contract_is_noninteractive_and_write_verified(self):
+        normalized = " ".join(TRACKER.split())
+        self.assertIn("--output json --compact --no-cache --no-pager", TRACKER)
+        self.assertIn("--data -", TRACKER)
+        self.assertIn("issues comment", TRACKER)
+        self.assertIn("issues update", TRACKER)
+        self.assertIn("reread", normalized.lower())
+        self.assertIn("LINEAR_API_KEY", TRACKER)
+        self.assertIn("auth status", TRACKER)
+        self.assertNotIn("save_comment", TRACKER)
+        self.assertNotIn("save_issue", TRACKER)
 
     def test_review_surface_and_help_row_remain_standalone(self):
         self.assertIn("storm-cross-review", CODE_REVIEW)

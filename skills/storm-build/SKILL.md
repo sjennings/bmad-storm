@@ -110,9 +110,12 @@ directly.
 5. After the Build/native review completes, invoke `storm-cross-review`. Fix or
    explicitly disposition findings and require a fresh complete pass per the
    configured round cap.
-6. Enforce `completion_commit_policy`. Only after a clean review, verification,
-   and commit-policy result invoke `storm-linear close`, which comments before
-   moving the Linear target to `Done`.
+6. The explicit `storm-build implement` invocation grants the execute session
+   bounded authority for exactly one task-scoped completion commit; it does not
+   authorize push. After clean review and verification, create that commit and
+   verify it contains the intended task snapshot. A failed commit leaves the
+   target `In Progress`. Only after the commit is complete invoke `storm-linear
+   close`, which comments before moving the Linear target to `Done`.
 7. If the target is the story issue, call sprint planning exactly once through
    the adaptive procedure for reconciliation. If it is a child ticket, do not
    call sprint planning and never close or reconcile the parent. If Linear is

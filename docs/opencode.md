@@ -9,8 +9,8 @@ presets, hook runtime, or Linear credentials.
 
 - BMAD with the BMM module is installed in the consuming project.
 - OMO-Slim is already installed and available to OpenCode.
-- The `linear-server` MCP is installed and configured. This is a hard
-  requirement. Storm does not invent or document a Linear endpoint or auth flow.
+- `linear-cli` 0.3.27 or later is installed and authenticated. This is a hard
+  requirement. Storm verifies auth status but never reads credential/token files.
 
 Install or update BMAD using the paths in the repository README. Upstream
 `--tools opencode` is currently valid; use `npx bmad-method install --list-tools`
@@ -66,8 +66,8 @@ need a reload.
 This walkthrough uses the project-local Storm projection and the OpenCode
 coordinator. It does not install or globally configure OpenCode or OMO-Slim.
 
-1. **Preflight and install.** Ensure BMAD with BMM, the configured
-   `linear-server` MCP, and the existing OMO-Slim runtime are present. Follow
+1. **Preflight and install.** Ensure BMAD with BMM, authenticated
+   `linear-cli` 0.3.27 or later, and the existing OMO-Slim runtime are present. Follow
    [the BMAD update checklist](../README.md#updating-bmad-method-and-storm),
    including the backup/commit of `_bmad/custom/`, `_bmad/config.toml`,
    `_bmad/config.user.toml`, and `_bmad/_config/manifest.yaml`. Use

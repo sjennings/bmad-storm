@@ -12,7 +12,7 @@ Wires the narrowly scoped Storm compatibility facts into BMAD through the docume
 - The BMM module is installed (`{project-root}/_bmad/bmm/config.yaml` exists). If not, stop: storm requires BMM.
 - Storm's own config exists (`{project-root}/_bmad/storm/config.yaml`, written by the installer from module.yaml prompts). If not, tell the operator to re-run `npx bmad-method install` with the storm module selected.
 - For the native OpenCode route, OMO-Slim must already be installed; Storm never installs or configures it.
-- The `linear-server` MCP must already be installed and configured. This is a hard requirement; Storm does not provide a Linear endpoint or auth flow.
+- `linear-cli` 0.3.27 or later must be installed and authenticated. Verify with `linear-cli --version` and `linear-cli auth status --output json --compact --no-pager`; then make one read-only issue query. Check only auth status—never read credential or token files. Storm does not install the CLI or configure Linear credentials.
 
 ## Install mode (default)
 

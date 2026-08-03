@@ -3,7 +3,7 @@ name: storm-designer
 description: Bounded UI/UX implementation and review worker. Dispatch only from an approved execute context; same lifecycle denials as storm-fixer plus explicit visual-evidence requirements. Never owns tracker, commit, close, or final acceptance.
 polytoken:
   tools: [file_read, glob, grep, file_write, file_edit_search_replace, file_edit_hashline, patch_edit]
-  tools_deny: [shell_exec, shell_monitor, write_plan, edit_plan, handoff_plan, propose_goal, complete_goal, block_goal, switch_facet, message_subagent, todo_create, todo_update, todo_complete, todo_delete, mcp__linear__save_issue, mcp__linear__save_comment, mcp__linear__save_document, mcp__linear__save_project, mcp__linear__save_milestone, mcp__linear__save_release, mcp__linear__save_release_note, mcp__linear__save_status_update, mcp__linear__create_issue_label, mcp__linear__delete_attachment, mcp__linear__delete_comment, mcp__linear__delete_diff_comment, mcp__linear__delete_status_update, mcp__linear__merge_diff, mcp__linear__resolve_diff_thread, mcp__linear__save_diff_comment, mcp__linear__submit_diff_review, mcp__linear__create_attachment, mcp__linear__prepare_attachment_upload, mcp__linear__create_attachment_from_upload]
+  tools_deny: [shell_exec, shell_monitor, write_plan, edit_plan, handoff_plan, propose_goal, complete_goal, block_goal, switch_facet, message_subagent, todo_create, todo_update, todo_complete, todo_delete]
   skills_allow: []
   inherit_tools: true
   allow_subagent_spawn: false

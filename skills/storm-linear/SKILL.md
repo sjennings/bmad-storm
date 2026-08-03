@@ -19,10 +19,14 @@ headless planner call where the wrapper contract requires it.
 
 1. Load `{project-root}/_bmad/storm/config.yaml` (`linear_team`, `linear_team_key`).
 2. Read `reference/issue-tracker.md` in this skill's directory — the full
-   contract: the three roles, workspace facts, API conventions, the two traps,
+   contract: the three roles, workspace facts, CLI conventions, the two traps,
    publishing format, phase-split authority table, partial outcomes, and
    wayfinding operations. Follow it exactly; this SKILL.md is a dispatcher, not
    a summary you can substitute for it.
+3. Preflight `linear-cli` 0.3.27 or later, authentication status, and one
+   read-only issue query. Never inspect credential/token files or print secret
+   environment values. Use noninteractive output and verify every write with a
+   fresh read as specified by the tracker contract.
 
 ## Operations
 
@@ -41,11 +45,11 @@ implementation route. Resolve the issue, move it to `In Progress`, and verify
 that state before mutation. The execute session that opens an issue owns closing
 it out; say so in the run log.
 
-**`close <story-key-or-issue>`** — implementation end, only after a clean exit
-(native Build review plus storm-cross-review clean, build and full suite green,
-and `completion_commit_policy` satisfied — under the default `require-explicit`
-that means an explicitly authorized, completed commit; under
-`allow-without-storm-commit` close may proceed without a Storm-created commit).
+**`close <story-key-or-issue>`** — implementation end, only after a clean exit:
+native Build review plus storm-cross-review clean, build and full suite green,
+and the task-scoped completion commit created and verified. `storm-build
+implement` grants its execute session authority for exactly that one commit;
+workers never commit independently, and push still requires separate authority.
 Comment the completion record on the issue **before** changing state: what
 shipped, verification actually run with results, every review finding declined
 with its reason, anything deferred to a named follow-up. Then move the issue to

@@ -178,7 +178,7 @@ host-specific selector is needed, inspect the supported names with
 `npx bmad-method install --list-tools`; otherwise use the generic BMAD install
 route above.
 
-Install prompts (stored in `_bmad/storm/config.yaml`): `linear_team`, `linear_team_key`, `grill_on_implement` (`full` | `gaps-only` | `off`), `external_reviewers`, `polytoken_review_models`, `review_loop_max_rounds`, `completion_commit_policy`, `polytoken_team_profile`, `polytoken_role_model_overrides`, `polytoken_council_models`, `polytoken_max_parallel_jobs`, and `polytoken_continue_on_idle` (off by default).
+Install prompts (stored in `_bmad/storm/config.yaml`): `linear_team`, `linear_team_key`, `grill_on_implement` (`full` | `gaps-only` | `off`), `external_reviewers`, `polytoken_review_models`, `review_loop_max_rounds`, `polytoken_team_profile`, `polytoken_role_model_overrides`, `polytoken_council_models`, `polytoken_max_parallel_jobs`, and `polytoken_continue_on_idle` (off by default). Every `storm-build implement` completion requires one verified task-scoped commit before Linear `Done`; push remains separately authorized.
 
 Review backends are host-specific:
 
@@ -238,7 +238,7 @@ Full architecture, operations, and v0.3.0 migration guide: [`docs/polytoken-orch
 
 ## Requirements
 
-BMAD-METHOD v7 with the BMM module; OMO-Slim already installed for the native OpenCode route; the installed and configured `linear-server` MCP (a hard requirement); `uv` (or Python 3.11+) for the customization resolver and standard-library Storm validators; optionally, authenticated external reviewer CLIs for cross-model panels outside Polytoken (missing reviewers are skipped with a warning). Storm does not define a Linear endpoint or authentication flow.
+BMAD-METHOD v7 with the BMM module; OMO-Slim already installed for the native OpenCode route; installed and authenticated `linear-cli` 0.3.27 or later (a hard requirement); `uv` (or Python 3.11+) for the customization resolver and standard-library Storm validators; optionally, authenticated external reviewer CLIs for cross-model panels outside Polytoken (missing reviewers are skipped with a warning). Storm verifies Linear auth status but never reads credential/token files or configures authentication.
 
 After setup, run `/reload`, then `storm-doctor` and `storm-setup check`. Review the generated asset ownership manifest before enabling writers or continuation. Run the numbered smoke scenarios in `docs/workflow-conformance.md` in a disposable project before using the package on production work.
 

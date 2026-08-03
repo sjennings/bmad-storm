@@ -78,25 +78,11 @@ LIFECYCLE_CONTROL_TOOLS = [
     "todo_delete",
 ]
 
-# Every Linear MCP tool that mutates tracker state known at authoring time.
-# storm-doctor must re-enumerate the live server and flag any new mutating
-# tool not covered here after a Polytoken/MCP update.
-LINEAR_MUTATION_TOOLS = [
-    "mcp__linear__save_issue", "mcp__linear__save_comment",
-    "mcp__linear__save_document", "mcp__linear__save_project",
-    "mcp__linear__save_milestone", "mcp__linear__save_release",
-    "mcp__linear__save_release_note", "mcp__linear__save_status_update",
-    "mcp__linear__create_issue_label", "mcp__linear__delete_attachment",
-    "mcp__linear__delete_comment", "mcp__linear__delete_diff_comment",
-    "mcp__linear__delete_status_update", "mcp__linear__merge_diff",
-    "mcp__linear__resolve_diff_thread", "mcp__linear__save_diff_comment",
-    "mcp__linear__submit_diff_review", "mcp__linear__create_attachment",
-    "mcp__linear__prepare_attachment_upload",
-    "mcp__linear__create_attachment_from_upload",
-]
-
+# Linear mutations run through linear-cli under the coordinator's shell tool.
+# Writer roles deny shell_exec/shell_monitor, so they cannot bypass storm-linear
+# with direct tracker calls. No separate tracker tool surface is managed here.
 WRITE_ROLE_REQUIRED_DENY = (
-    LIFECYCLE_CONTROL_TOOLS + LINEAR_MUTATION_TOOLS + ["shell_exec", "shell_monitor"]
+    LIFECYCLE_CONTROL_TOOLS + ["shell_exec", "shell_monitor"]
 )
 
 # Harness-managed tools that Polytoken 0.5.9 refuses to load in a
@@ -256,7 +242,7 @@ class Validator:
                                   "references are runtime-gated, never silently substituted")
 
         if path.stem in READ_ONLY_ROLES:
-            bad = set(tools) & (MUTATION_BUILTIN_TOOLS | set(LINEAR_MUTATION_TOOLS)
+            bad = set(tools) & (MUTATION_BUILTIN_TOOLS
                                 | set(LIFECYCLE_CONTROL_TOOLS))
             if bad:
                 self.finding(subject, f"read-only role grants mutating tools: {sorted(bad)}")

@@ -56,13 +56,13 @@ MODULE_ROOT = Path(__file__).resolve().parents[2]
 EXPECTED_CONFIG_KEYS = [
     "linear_team", "linear_team_key", "grill_on_implement",
     "external_reviewers", "polytoken_review_models",
-    "review_loop_max_rounds", "completion_commit_policy",
+    "review_loop_max_rounds",
     "polytoken_team_profile", "polytoken_role_model_overrides",
     "polytoken_council_models", "polytoken_max_parallel_jobs",
     "polytoken_continue_on_idle",
 ]
 
-REQUIRED_CONTRACT_SETTINGS = ["review_loop_max_rounds", "completion_commit_policy"]
+REQUIRED_CONTRACT_SETTINGS = ["review_loop_max_rounds"]
 
 
 def load_module(path: Path, name: str):
@@ -277,8 +277,8 @@ class Doctor:
                              f"write role does not deny: {missing}")
         self.note(check, "deny-list coverage is audited against the tools "
                          "known at authoring time; after any Polytoken or "
-                         "Linear MCP update, enumerate the live server's "
-                         "mutation tools in an operator session and confirm "
+                         "linear-cli update, inspect the installed CLI's "
+                         "mutation commands in an operator session and confirm "
                          "no new mutating tool is missing from the write-role "
                          "deny lists (static audit cannot observe the server)")
 

@@ -41,7 +41,7 @@
       "kind": "subagent",
       "merge": "managed-file",
       "required": true,
-      "sha256": "9dd197f78061bf4e678796ae708bdb3ab082cfc25c9c5644513c6e487c536680"
+      "sha256": "f4709d135a80d0bbfb3de7b874887ee4990aee78ff48705ffa8997bc90128255"
     },
     {
       "source": "subagents/storm-designer.md",
@@ -49,7 +49,7 @@
       "kind": "subagent",
       "merge": "managed-file",
       "required": true,
-      "sha256": "f7909379ded4effd17f09f82ab1bf3c79a8cb357a8ff2b4370dbc334e8b96c2e"
+      "sha256": "ae8b7ad9380d6d24a155c81cba28b36d386eba9539c3504cda19f1468d990c78"
     },
     {
       "source": "subagents/storm-councillor.md",

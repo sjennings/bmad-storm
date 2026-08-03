@@ -132,9 +132,10 @@ Recorded during the v0.4.0 development gates against the actual target runtime
   open verified → mutation.
 - Review rounds come only from `review_loop_max_rounds`; fixes require a complete
   fresh review pass; non-convergence leaves the issue `In Progress`.
-- No Storm role commits without explicit operator authority.
-  `completion_commit_policy` (default `require-explicit`; alternative
-  `allow-without-storm-commit`) controls whether close may proceed.
+- The explicit `storm-build implement` request authorizes exactly one
+  task-scoped completion commit after clean verification; it does not authorize
+  push. The commit must be created and verified before the completion comment or
+  Linear `Done`; workers never commit independently.
 - The execute session that opens a target owns closing it. A child-ticket close
   reconciles nothing and never closes, mutates, or reconciles the parent story.
 - `storm-build validate` does not publish, open, close, refresh readiness, or
@@ -177,7 +178,7 @@ accepted and documented.
 | D3 | Direct Build or shim calls caused tracker side effects | repair | Direct calls are unwrapped; only explicit `storm-build` subcommands own publish/open/close. |
 | D4 | Planner calls duplicated across hooks | repair | Author has exactly one readiness call; implementation has exactly one reconciliation for a story target and zero for a child. |
 | D5 | Review-loop limits hard-coded in several places | repair | Exactly one setting, `review_loop_max_rounds`, is read; templates reference it by name. |
-| D6 | Commit/close behavior varied by route | repair | No commit without explicit authority; one `completion_commit_policy` controls close. |
+| D6 | Commit/close behavior varied by route | repair | `storm-build implement` authorizes one task-scoped completion commit; every story or child ticket must complete and verify that commit before comment/close, while push remains separately authorized. |
 | D7 | A worker owned tracker/commit/close independently | retire | Retired; any retained worker is bounded and parent-controlled and never owns tracker, commit, or close. |
 | D8 | References to retired or archived workflows remained active | repair | Retired names appear only in tested compatibility or migration context and are not active advertising. |
 | D9 | Parallel authoritative brief/spec keys | repair | One artifact lifecycle: BMAD authoring artifact before publication, published Linear specification after. |
@@ -262,7 +263,6 @@ contract. A transcript is a JSON object:
 
 ```json
 {
-  "policy": "require-explicit",
   "max_rounds": 3,
   "events": [
     {"event": "scope_resolved"},
@@ -281,8 +281,9 @@ contract. A transcript is a JSON object:
 }
 ```
 
-- `policy` and `max_rounds` are optional; defaults come from the contract's
-  `completion_commit_policy` and `review_loop_max_rounds`.
+- `max_rounds` is optional; its default comes from the contract's
+  `review_loop_max_rounds`. Completion-commit policy overrides are rejected:
+  every implementation close requires a completed commit.
 - `issue_opened` carries `target: "story" | "child"`; close guards match
   against it.
 - Event vocabulary (defined in `transitions` in the contract) includes

@@ -10,7 +10,6 @@ what the disposable smoke scenarios in docs/workflow-conformance.md are for.
 Transcript format (JSON):
 
     {
-      "policy": "require-explicit",        // optional; completion_commit_policy
       "max_rounds": 3,                     // optional; review_loop_max_rounds
       "events": [
         {"event": "scope_resolved"},
@@ -21,7 +20,7 @@ Transcript format (JSON):
 
 A bare JSON array of events is also accepted. CLI usage:
 
-    python3 validate_transcript.py transcript.json [--policy P] [--max-rounds N]
+    python3 validate_transcript.py transcript.json [--max-rounds N]
 
 Exit code 0 with a JSON report when valid; exit code 1 with the failure list
 when invalid; exit code 2 on malformed input.
@@ -34,7 +33,6 @@ import sys
 from pathlib import Path
 
 CONTRACT_PATH = Path(__file__).resolve().parent / "workflow-contract.json"
-VALID_POLICIES = ("require-explicit", "allow-without-storm-commit")
 
 
 class TranscriptError(Exception):
@@ -56,11 +54,15 @@ def _normalize_transcript(raw) -> tuple[list[dict], str | None, int | None]:
         events = raw.get("events")
         if not isinstance(events, list):
             raise TranscriptError("transcript object must contain an 'events' list")
-        policy = raw.get("policy")
+        if "policy" in raw:
+            raise TranscriptError(
+                "completion commit policy overrides are no longer supported; "
+                "a completed commit is mandatory"
+            )
         max_rounds = raw.get("max_rounds")
         if max_rounds is not None and (not isinstance(max_rounds, int) or max_rounds < 1):
             raise TranscriptError("max_rounds must be a positive integer")
-        return events, policy, max_rounds
+        return events, None, max_rounds
     raise TranscriptError("transcript must be a JSON array or object")
 
 
@@ -72,10 +74,11 @@ def validate_transcript(
 ) -> list[str]:
     """Validate an event sequence against the contract. Returns a list of
     violations; an empty list means the transcript conforms."""
-    if policy is None:
-        policy = contract["settings"]["completion_commit_policy"]["default"]
-    if policy not in VALID_POLICIES:
-        raise TranscriptError(f"unknown completion_commit_policy: {policy!r}")
+    if policy is not None:
+        raise TranscriptError(
+            "completion commit policy overrides are no longer supported; "
+            "a completed commit is mandatory"
+        )
     if max_rounds is None:
         max_rounds = int(contract["settings"]["review_loop_max_rounds"]["default"])
     if max_rounds < 1:
@@ -121,11 +124,10 @@ def validate_transcript(
                 f"{label}: commit_completed without a prior commit_authorized event"
             )
             return errors
-        if guard == "close_policy" and policy == "require-explicit" and not commit_completed:
+        if guard == "commit_completed_seen" and not commit_completed:
             errors.append(
-                f"{label}: completion_commented under require-explicit without "
-                "a completed commit; commit authority alone is insufficient — "
-                "the issue must stay In Progress"
+                f"{label}: completion_commented without a completed commit; "
+                "commit authority alone is insufficient — the issue must stay In Progress"
             )
             return errors
         if guard == "story_target" and opened_target != "story":

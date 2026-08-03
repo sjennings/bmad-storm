@@ -59,8 +59,7 @@ class SubagentDefinitionTests(unittest.TestCase):
 
     def test_read_only_roles_have_no_mutation_tools(self):
         forbidden = (validator.MUTATION_BUILTIN_TOOLS
-                     | set(validator.LIFECYCLE_CONTROL_TOOLS)
-                     | set(validator.LINEAR_MUTATION_TOOLS))
+                     | set(validator.LIFECYCLE_CONTROL_TOOLS))
         for role in validator.READ_ONLY_ROLES:
             poly = polytoken_block(role)
             self.assertFalse(set(poly.get("tools", [])) & forbidden,
@@ -124,8 +123,12 @@ class SubagentDenyRedesignTests(unittest.TestCase):
         self.assertEqual({"subagent"}, validator.HARNESS_MANAGED_UNDENIABLE)
         self.assertNotIn("subagent", validator.WRITE_ROLE_REQUIRED_DENY)
         for still_required in ("message_subagent", "shell_exec",
-                               "mcp__linear__save_issue", "complete_goal"):
+                               "shell_monitor", "complete_goal"):
             self.assertIn(still_required, validator.WRITE_ROLE_REQUIRED_DENY)
+        self.assertFalse(any(
+            tool.startswith("mcp__linear__")
+            for tool in validator.WRITE_ROLE_REQUIRED_DENY
+        ))
 
     def test_write_roles_document_the_059_limitation(self):
         for role in validator.WRITE_ROLES:
@@ -605,7 +608,9 @@ class SecurityTests(unittest.TestCase):
 
     def test_hook_script_contains_no_network_or_tracker_calls(self):
         script = HOOK_SCRIPT.read_text()
-        for forbidden in ("curl", "wget", "mcp__linear", "http://", "https://"):
+        for forbidden in (
+            "curl", "wget", "mcp__linear", "linear-cli", "http://", "https://"
+        ):
             self.assertNotIn(forbidden, script)
 
 

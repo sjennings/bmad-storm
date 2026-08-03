@@ -188,15 +188,13 @@ class ContractStructureTests(unittest.TestCase):
         self.assertIn("review_loop_max_rounds", guard)
         self.assertIn("review_halted_non_converged", guard)
 
-    def test_commit_policy_defaults_and_allowed_values(self):
-        policy = CONTRACT["settings"]["completion_commit_policy"]
-        self.assertEqual("require-explicit", policy["default"])
-        self.assertEqual(
-            ["require-explicit", "allow-without-storm-commit"], policy["allowed"]
-        )
-        self.assertIn("explicit operator authority", policy["rule"])
-        self.assertIn("completion_commit_policy:", MODULE)
-        self.assertIn("allow-without-storm-commit", MODULE)
+    def test_completed_commit_is_mandatory_and_not_configurable(self):
+        self.assertNotIn("completion_commit_policy", CONTRACT["settings"])
+        self.assertNotIn("completion_commit_policy:", MODULE)
+        self.assertNotIn("allow-without-storm-commit", MODULE)
+        close = CONTRACT["operations"]["storm-linear.close"]
+        self.assertIn("commit_completed", close["preconditions"])
+        self.assertIn("completed commit", CONTRACT["guards"]["commit_completed_seen"])
 
     def test_enforcement_level_is_honest_about_directive_control(self):
         enforcement = CONTRACT["enforcement"]
@@ -333,8 +331,7 @@ class AliasEquivalenceTests(unittest.TestCase):
             self.assertIn(f"D{number} ", CONFORMANCE_DOC)
         for phrase in (
             "review_loop_max_rounds",
-            "completion_commit_policy",
-            "require-explicit",
+            "completed commit",
             "handoff_plan",
             "storm-linear slice",
         ):
@@ -374,7 +371,10 @@ class TranscriptFixtureTests(unittest.TestCase):
         invalid = sorted(FIXTURES.glob("invalid_*.json"))
         self.assertGreaterEqual(len(invalid), 8)
         for path in invalid:
-            events, policy, max_rounds = load_fixture(path)
+            try:
+                events, policy, max_rounds = load_fixture(path)
+            except VALIDATOR.TranscriptError:
+                continue
             errors = VALIDATOR.validate_transcript(
                 events, CONTRACT, policy=policy, max_rounds=max_rounds
             )
@@ -411,16 +411,25 @@ class TranscriptFixtureTests(unittest.TestCase):
         errors = VALIDATOR.validate_transcript(events, CONTRACT)
         self.assertIn("commit_authorized", errors[0])
 
-    def test_commit_policy_controls_close(self):
+    def test_close_without_completed_commit_is_always_rejected(self):
         events, _, _ = load_fixture(
             FIXTURES / "invalid_require_explicit_close_without_authority.json"
         )
         errors = VALIDATOR.validate_transcript(events, CONTRACT)
-        self.assertIn("require-explicit", errors[0])
-        events, policy, _ = load_fixture(FIXTURES / "valid_allow_without_storm_commit_close.json")
-        self.assertEqual(
-            [], VALIDATOR.validate_transcript(events, CONTRACT, policy=policy)
+        self.assertIn("completed commit", errors[0])
+
+        events, _, _ = load_fixture(
+            FIXTURES / "invalid_authority_without_commit_completed.json"
         )
+        errors = VALIDATOR.validate_transcript(events, CONTRACT)
+        self.assertIn("completed commit", errors[0])
+
+    def test_removed_commit_policy_override_is_rejected(self):
+        raw = json.loads(
+            (FIXTURES / "invalid_removed_commit_policy_override.json").read_text()
+        )
+        with self.assertRaises(VALIDATOR.TranscriptError):
+            VALIDATOR._normalize_transcript(raw)
 
     def test_authority_without_completed_commit_rejected_at_close(self):
         events, _, _ = load_fixture(
@@ -428,7 +437,6 @@ class TranscriptFixtureTests(unittest.TestCase):
         )
         errors = VALIDATOR.validate_transcript(events, CONTRACT)
         self.assertTrue(errors, "authority without a completed commit must be rejected")
-        self.assertIn("require-explicit", errors[0])
         self.assertIn("completed commit", errors[0])
 
     def test_review_cap_error_names_the_setting(self):
