@@ -224,7 +224,7 @@ Storm hook for a shim.
 
 ## Native Polytoken orchestration
 
-Version 0.5.0 adds Storm-owned Polytoken assets projected by `storm-setup` into a consuming project's `.polytoken/` surface. The package provides Explorer, Librarian, Oracle, Observer, Fixer, Designer, and Councillor roles; scheduler-centered orchestration through native todos/jobs; manual Council; status projection; managed role profiles; deterministic conformance and asset validation; and a read-only doctor.
+Version 0.5.1 includes Storm-owned Polytoken assets projected by `storm-setup` into a consuming project's `.polytoken/` surface. The package provides Explorer, Librarian, Oracle, Observer, Fixer, Designer, and Councillor roles; scheduler-centered orchestration through native todos/jobs; manual Council; status projection; managed role profiles; deterministic conformance and asset validation; and a read-only doctor.
 
 The shipped Polytoken `plan` and `execute` facets remain authoritative. Plan-phase work routes to read-only roles. Fixer and Designer are bounded writers dispatched only after an approved goal-backed handoff and verified Linear `In Progress`; their definitions deny tracker, goal, plan, facet, finalization, and shell mutation surfaces, and specialists cannot spawn subagents under the runtime-compatible boundary (`allow_subagent_spawn: false` plus coordinator convention — Polytoken 0.5.9 cannot deny the harness-managed `subagent` tool; see `docs/workflow-conformance.md`). Because the shipped `plan` facet exposes `shell_exec`, Storm documents plan safety as directive/permission-classifier enforcement rather than a physical sandbox.
 

@@ -1,7 +1,7 @@
 code: storm
 name: "August Storm Harness"
 description: "Project harness for August Storm on BMAD: explicit storm-build lifecycle wrapper around unwrapped upstream bmad-build, Linear phase-split source of truth, grilling interviews, cross-model spec/code review panels, tracker drift reconciliation, and a proposal-only harness improvement loop. Requires the BMad Method (bmm) module and an installed, authenticated linear-cli."
-module_version: 0.5.0
+module_version: 0.5.1
 default_selected: false
 
 module_greeting: >

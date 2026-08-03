@@ -40,7 +40,7 @@ class PolytokenReviewContractTests(unittest.TestCase):
 
     def test_module_declares_separate_polytoken_roster_with_empty_default(self):
         """AC.1: installer exposes a portable, user-scoped Polytoken roster."""
-        self.assertIn("module_version: 0.5.0", MODULE)
+        self.assertIn("module_version: 0.5.1", MODULE)
         block = yaml_prompt_block("polytoken_review_models")
         for text in (
             "scope: user",

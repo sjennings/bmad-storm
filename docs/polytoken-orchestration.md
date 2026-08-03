@@ -1,6 +1,6 @@
 # Polytoken Orchestration
 
-Operator-facing architecture and migration guide for the Storm Polytoken package (v0.5.0). The canonical workflow rules live in [`skills/storm-contract/workflow-contract.json`](../skills/storm-contract/workflow-contract.json) and their human companion [`docs/workflow-conformance.md`](workflow-conformance.md); this document covers how the orchestration package is put together, how to install and operate it, and what was ported from `oh-my-opencode-slim` (OmO Slim). Where this document and the JSON contract disagree, the contract wins and this document is stale.
+Operator-facing architecture and migration guide for the Storm Polytoken package (v0.5.1). The canonical workflow rules live in [`skills/storm-contract/workflow-contract.json`](../skills/storm-contract/workflow-contract.json) and their human companion [`docs/workflow-conformance.md`](workflow-conformance.md); this document covers how the orchestration package is put together, how to install and operate it, and what was ported from `oh-my-opencode-slim` (OmO Slim). Where this document and the JSON contract disagree, the contract wins and this document is stale.
 
 ## Architecture: the authority chain
 
@@ -266,7 +266,7 @@ Prompt-security hardening applies throughout: never read secret values (check ex
 
 ## Migration from v0.3.0
 
-1. Upgrade/install v0.5.0 through the BMAD module installer.
+1. Upgrade/install v0.5.1 through the BMAD module installer.
 2. Review the new install prompts and defaults (`polytoken_team_profile`, `polytoken_role_model_overrides`, `polytoken_council_models`, `polytoken_max_parallel_jobs`, `polytoken_continue_on_idle` — off by default). Implementation completion now always requires one verified task-scoped commit before Linear `Done`; push remains separately authorized.
 3. Run `> use the storm-setup skill` and approve the managed projections.
 4. Run `/reload`.

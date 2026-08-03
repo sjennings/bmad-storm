@@ -12,7 +12,7 @@
       "name": "storm",
       "source": "./skills",
       "description": "August Storm harness module for BMAD: Linear as phase-split source of truth, grilling interviews at story authoring and implementation entry, cross-model spec and code review panels, three-way tracker drift reconciliation, and the bounded harness-improvement loop.",
-      "version": "0.5.0",
+      "version": "0.5.1",
       "author": {
         "name": "Scott Jennings"
       },
